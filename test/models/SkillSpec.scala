@@ -1,15 +1,18 @@
 package models
 
-import scalikejdbc.specs2.mutable.AutoRollback
+import db.Tables
+import org.jooq.impl.DSL
 import org.specs2.mutable._
-import org.joda.time._
-import scalikejdbc._, SQLInterpolation._
+import scalikejdbc._
+import scalikejdbc.specs2.mutable.AutoRollback
 
 class SkillSpec extends Specification with settings.DBSettings {
 
   trait AutoRollbackWithFixture extends AutoRollback {
+    implicit def connection = _db.withinTxSession().connection
+
     override def fixture(implicit session: DBSession) {
-      applyUpdate(delete from Skill)
+      DSL.using(session.connection).deleteFrom(Tables.SKILL).execute()
       Skill.create("Scala")
       Skill.create("Java")
       Skill.create("Ruby")
@@ -26,19 +29,19 @@ class SkillSpec extends Specification with settings.DBSettings {
     }
     "find all records" in new AutoRollbackWithFixture {
       val allResults = Skill.findAll()
-      allResults.size should_== (5)
+      allResults.size should_== 5
     }
     "count all records" in new AutoRollbackWithFixture {
       val count = Skill.countAll()
-      count should_== (5L)
+      count should_== 5L
     }
     "find by where clauses" in new AutoRollbackWithFixture {
-      val results = Skill.findAllBy(sqls.in(Skill.column.name, Seq("Python", "Perl")))
-      results.size should_== (2)
+      val results = Skill.findAllBy(Skill.s.NAME.in("Python", "Perl"))
+      results.size should_== 2
     }
     "count by where clauses" in new AutoRollbackWithFixture {
-      val count = Skill.countBy(sqls"${Skill.column.name} like ${"P%"}")
-      count should_== (2L)
+      val count = Skill.countBy(Skill.s.NAME.like("P%"))
+      count should_== 2L
     }
     "create new record" in new AutoRollbackWithFixture {
       val newSkill = Skill.create(name = "ScalikeJDBC")
@@ -48,14 +51,14 @@ class SkillSpec extends Specification with settings.DBSettings {
       val entity = Skill.findAll().head
       entity.copy(name = "Erlang").save()
       val updated = Skill.find(entity.id).get
-      updated.name should_== ("Erlang")
+      updated.name should_== "Erlang"
     }
     "destroy a record" in new AutoRollbackWithFixture {
       val entity = Skill.findAll().head
       entity.destroy()
       val shouldBeNone = Skill.find(entity.id)
       shouldBeNone.isDefined should beFalse
-      Skill.countAll() should_== (4L)
+      Skill.countAll() should_== 4L
     }
   }
 

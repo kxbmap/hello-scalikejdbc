@@ -1,6 +1,7 @@
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .enablePlugins(SbtWeb)
+  .enablePlugins(JooqPlugin)
   .settings(
     name := "hello-scalikejdbc",
     version := "0.1",
@@ -10,32 +11,46 @@ lazy val root = (project in file("."))
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
     ),
     libraryDependencies ++= Seq(
-      "org.scalikejdbc"      %% "scalikejdbc"                   % scalikejdbcVersion,
-      "org.scalikejdbc"      %% "scalikejdbc-config"            % scalikejdbcVersion,
-      "org.scalikejdbc"      %% "scalikejdbc-play-initializer"  % scalikejdbcPlayVersion,
-      "org.scalikejdbc"      %% "scalikejdbc-play-fixture"      % scalikejdbcPlayVersion,
-      "com.h2database"       %  "h2"                            % h2Version,
-      "org.hibernate"        %  "hibernate-core"                % "4.3.10.Final",
-      "org.json4s"           %% "json4s-ext"                    % "3.2.11",
-      "com.github.tototoshi" %% "play-json4s-native"            % "0.4.0",
-      "org.flywaydb"         %% "flyway-play"                   % "2.0.1",
-      "org.scalikejdbc"      %% "scalikejdbc-test"              % scalikejdbcVersion  % "test",
+      jdbc,
+      "com.h2database"       %  "h2"                 % h2Version,
+      "org.json4s"           %% "json4s-ext"         % "3.2.11",
+      "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
+      "org.flywaydb"         %% "flyway-play"        % "2.0.1",
+      "org.scalikejdbc"      %% "scalikejdbc-test"   % scalikejdbcVersion % "test",
+      "org.scalikejdbc"      %% "scalikejdbc-config" % scalikejdbcVersion % "test",
       specs2 % "test"
     ),
     checksums := Nil, // play-json4s-native_2.11-0.4.0.pom: invalid sha1
-    initialCommands := """
-      import scalikejdbc._, config._
-      import models._, utils._
-      DBs.setupAll
-      DBInitializer.run()
-      implicit val autoSession = AutoSession
-      val (p, c, s, ps) = (Programmer.syntax("p"), Company.syntax("c"), Skill.syntax("s"), ProgrammerSkill.syntax("ps"))
-    """,
     routesGenerator := InjectedRoutesGenerator,
-    scalikejdbcSettings // http://scalikejdbc.org/documentation/setup.html
+    initialCommands := """
+      import models._
+      import org.jooq._
+      import org.jooq.impl.DSL
+      Class.forName("org.h2.Driver")
+      implicit val __connection = java.sql.DriverManager.getConnection("jdbc:h2:./db/playapp", "sa", "")
+      val (p, c, s, ps) = (Programmer.p, Company.c, Skill.s, ProgrammerSkill.ps)
+      val ctx = DSL.using(__connection)
+    """,
+    cleanupCommands := """
+      __connection.close()
+    """,
+    jooqConfigFile := file("project") / "jooq-codegen.xml",
+    libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq",
+    codegen in jooq <<= (codegen in jooq).dependsOn(flywayMigrate in migration)
   )
+  .dependsOn(migration)
 
 lazy val scalikejdbcVersion = "2.2.+"
-lazy val scalikejdbcPlayVersion = "2.4.+"
 lazy val h2Version = "1.4.+"
 
+lazy val migration = project.settings(
+  name := "hello-scalikejdbc-migration",
+  version := "0.1",
+  scalaVersion := "2.11.7",
+  flywaySettings,
+  flywayUrl := "jdbc:h2:./db/playapp",
+  flywayUser := "sa",
+  flywaySchemas := Seq("PUBLIC"),
+  flywayLocations := Seq("db/migration/default"),
+  libraryDependencies += "com.h2database" % "h2" % h2Version
+)

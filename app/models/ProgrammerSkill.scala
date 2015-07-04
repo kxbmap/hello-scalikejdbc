@@ -1,10 +1,9 @@
 package models
 
-import scalikejdbc._
+import db.Tables
 
 case class ProgrammerSkill(programmerId: Long, skillId: Long)
 
-object ProgrammerSkill extends SQLSyntaxSupport[ProgrammerSkill] {
-  val ps = ProgrammerSkill.syntax("ps")
+object ProgrammerSkill {
+  val ps = Tables.PROGRAMMER_SKILL.as("ps")
 }
-

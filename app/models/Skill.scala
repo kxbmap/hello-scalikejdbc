@@ -1,7 +1,11 @@
 package models
 
-import scalikejdbc._
+import db.Tables
+import java.sql.{Connection, Timestamp}
 import org.joda.time.DateTime
+import org.jooq.impl.DSL
+import org.jooq.{Condition, Record, RecordMapper}
+import scala.collection.JavaConverters._
 
 case class Skill(
     id: Long,
@@ -9,67 +13,85 @@ case class Skill(
     createdAt: DateTime,
     deletedAt: Option[DateTime] = None) {
 
-  def save()(implicit session: DBSession = Skill.autoSession): Skill = Skill.save(this)(session)
-  def destroy()(implicit session: DBSession = Skill.autoSession): Unit = Skill.destroy(id)(session)
+  def save()(implicit conn: Connection): Skill = Skill.save(this)
+
+  def destroy()(implicit conn: Connection): Unit = Skill.destroy(id)
 }
 
-object Skill extends SQLSyntaxSupport[Skill] {
+object Skill {
 
-  def apply(s: SyntaxProvider[Skill])(rs: WrappedResultSet): Skill = apply(s.resultName)(rs)
-  def apply(s: ResultName[Skill])(rs: WrappedResultSet): Skill = new Skill(
-    id = rs.get(s.id),
-    name = rs.get(s.name),
-    createdAt = rs.get(s.createdAt),
-    deletedAt = rs.get(s.deletedAt)
-  )
+  def apply(s: db.tables.Skill): RecordMapper[Record, Skill] = new RecordMapper[Record, Skill] {
+    def map(record: Record): Skill = Skill(
+      id = record.getValue(s.ID),
+      name = record.getValue(s.NAME),
+      createdAt = new DateTime(record.getValue(s.CREATED_AT)),
+      deletedAt = Option(record.getValue(s.DELETED_AT)).map(new DateTime(_))
+    )
+  }
 
-  def opt(s: SyntaxProvider[Skill])(rs: WrappedResultSet): Option[Skill] = rs.longOpt(s.resultName.id).map(_ => apply(s.resultName)(rs))
+  def opt(s: db.tables.Skill): RecordMapper[Record, Option[Skill]] = new RecordMapper[Record, Option[Skill]] {
+    val srm = Skill(s)
+    def map(record: Record): Option[Skill] = Option(record.getValue(s.ID)).map(_ => srm.map(record))
+  }
 
-  val s = Skill.syntax("s")
+  val s = Tables.SKILL.as("s")
+  private val isNotDeleted = s.DELETED_AT.isNull
 
-  private val isNotDeleted = sqls.isNull(s.deletedAt)
+  def find(id: Long)(implicit conn: Connection): Option[Skill] = {
+    Option(DSL.using(conn).selectFrom(s).where(s.ID.equal(id).and(isNotDeleted)).fetchOne(Skill(s)))
+  }
 
-  def find(id: Long)(implicit session: DBSession = autoSession): Option[Skill] = withSQL {
-    select.from(Skill as s).where.eq(s.id, id).and.append(isNotDeleted)
-  }.map(Skill(s)).single.apply()
+  def findAll()(implicit conn: Connection): List[Skill] = {
+    DSL.using(conn)
+      .selectFrom(s)
+      .where(isNotDeleted)
+      .orderBy(s.ID)
+      .fetch(Skill(s)).asScala.toList
+  }
 
-  def findAll()(implicit session: DBSession = autoSession): List[Skill] = withSQL {
-    select.from(Skill as s)
-      .where.append(isNotDeleted)
-      .orderBy(s.id)
-  }.map(Skill(s)).list.apply()
+  def countAll()(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(s).where(isNotDeleted).fetchOne().value1()
+  }
 
-  def countAll()(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Skill as s).where.append(isNotDeleted)
-  }.map(rs => rs.long(1)).single.apply().get
+  def findAllBy(where: Condition)(implicit conn: Connection): List[Skill] = {
+    DSL.using(conn)
+      .selectFrom(s)
+      .where(where.and(isNotDeleted))
+      .orderBy(s.ID)
+      .fetch(Skill(s)).asScala.toList
+  }
 
-  def findAllBy(where: SQLSyntax)(implicit session: DBSession = autoSession): List[Skill] = withSQL {
-    select.from(Skill as s)
-      .where.append(isNotDeleted).and.append(sqls"${where}")
-      .orderBy(s.id)
-  }.map(Skill(s)).list.apply()
+  def countBy(where: Condition)(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(s).where(where.and(isNotDeleted)).fetchOne().value1()
+  }
 
-  def countBy(where: SQLSyntax)(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Skill as s).where.append(isNotDeleted).and.append(sqls"${where}")
-  }.map(_.long(1)).single.apply().get
+  def create(name: String, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Skill = {
+    val s = Tables.SKILL
 
-  def create(name: String, createdAt: DateTime = DateTime.now)(implicit session: DBSession = autoSession): Skill = {
-    val id = withSQL {
-      insert.into(Skill).namedValues(column.name -> name, column.createdAt -> createdAt)
-    }.updateAndReturnGeneratedKey.apply()
+    val id = DSL.using(conn)
+      .insertInto(s, s.NAME, s.CREATED_AT)
+      .values(name, new Timestamp(createdAt.getMillis))
+      .returning(s.ID)
+      .fetchOne().getId
 
     Skill(id = id, name = name, createdAt = createdAt)
   }
 
-  def save(m: Skill)(implicit session: DBSession = autoSession): Skill = {
-    withSQL {
-      update(Skill).set(column.name -> m.name).where.eq(column.id, m.id).and.isNull(column.deletedAt)
-    }.update.apply()
+  def save(m: Skill)(implicit conn: Connection): Skill = {
+    DSL.using(conn)
+      .update(s)
+      .set(s.NAME, m.name)
+      .where(s.ID.equal(m.id).and(isNotDeleted))
+      .execute()
     m
   }
 
-  def destroy(id: Long)(implicit session: DBSession = autoSession): Unit = withSQL {
-    update(Skill).set(column.deletedAt -> DateTime.now).where.eq(column.id, id)
-  }.update.apply()
+  def destroy(id: Long)(implicit conn: Connection): Unit = {
+    DSL.using(conn)
+      .update(s)
+      .set(s.DELETED_AT, new Timestamp(DateTime.now.getMillis))
+      .where(s.ID.equal(id).and(isNotDeleted))
+      .execute()
+  }
 
 }

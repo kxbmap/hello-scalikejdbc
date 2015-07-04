@@ -1,24 +1,30 @@
 package controllers
 
 import com.github.tototoshi.play2.json4s.native._
+import javax.inject.Inject
 import models._
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import play.api.data.Forms._
 import play.api.data._
 import play.api.data.validation.Constraints._
+import play.api.db.Database
 import play.api.mvc._
 
-class Programmers extends Controller with Json4s {
+class Programmers @Inject()(db: Database) extends Controller with Json4s {
 
   implicit val formats = DefaultFormats ++ JodaTimeSerializers.all
 
   def all = Action {
-    Ok(Extraction.decompose(Programmer.findAll))
+    db.withTransaction { implicit conn =>
+      Ok(Extraction.decompose(Programmer.findAll))
+    }
   }
 
   def show(id: Long) = Action {
-    Programmer.find(id).map(programmer => Ok(Extraction.decompose(programmer))) getOrElse NotFound
+    db.withTransaction { implicit conn =>
+      Programmer.find(id).map(programmer => Ok(Extraction.decompose(programmer))) getOrElse NotFound
+    }
   }
 
   case class ProgrammerForm(name: String, companyId: Option[Long] = None)
@@ -33,7 +39,7 @@ class Programmers extends Controller with Json4s {
   def create = Action { implicit req =>
     programmerForm.bindFromRequest.fold(
       formWithErrors => BadRequest("invalid parameters"),
-      form => {
+      form => db.withTransaction { implicit conn =>
         val programmer = Programmer.create(name = form.name, companyId = form.companyId)
         Created.withHeaders(LOCATION -> s"/programmers/${programmer.id}")
         NoContent
@@ -42,44 +48,54 @@ class Programmers extends Controller with Json4s {
   }
 
   def addSkill(programmerId: Long, skillId: Long) = Action {
-    Programmer.find(programmerId).map { programmer =>
-      try {
-        Skill.find(skillId).foreach(programmer.addSkill)
-        Ok
-      } catch {
-        case e: Exception => Conflict
-      }
-    } getOrElse NotFound
+    db.withTransaction { implicit conn =>
+      Programmer.find(programmerId).map { programmer =>
+        try {
+          Skill.find(skillId).foreach(programmer.addSkill)
+          Ok
+        } catch {
+          case e: Exception => Conflict
+        }
+      } getOrElse NotFound
+    }
   }
 
   def deleteSkill(programmerId: Long, skillId: Long) = Action {
-    Programmer.find(programmerId).map { programmer =>
-      Skill.find(skillId).foreach(programmer.deleteSkill)
-      Ok
-    } getOrElse NotFound
+    db.withTransaction { implicit conn =>
+      Programmer.find(programmerId).map { programmer =>
+        Skill.find(skillId).foreach(programmer.deleteSkill)
+        Ok
+      } getOrElse NotFound
+    }
   }
 
   def joinCompany(programmerId: Long, companyId: Long) = Action {
-    Company.find(companyId).map { company =>
-      Programmer.find(programmerId).map { programmer =>
-        programmer.copy(companyId = Some(company.id)).save()
-        Ok
-      } getOrElse BadRequest("Programmer not found!")
-    } getOrElse BadRequest("Company not found!")
+    db.withTransaction { implicit conn =>
+      Company.find(companyId).map { company =>
+        Programmer.find(programmerId).map { programmer =>
+          programmer.copy(companyId = Some(company.id)).save()
+          Ok
+        } getOrElse BadRequest("Programmer not found!")
+      } getOrElse BadRequest("Company not found!")
+    }
   }
 
   def leaveCompany(programmerId: Long) = Action {
-    Programmer.find(programmerId).map { programmer =>
-      programmer.copy(companyId = None).save()
-      Ok
-    } getOrElse BadRequest("Programmer not found!")
+    db.withTransaction { implicit conn =>
+      Programmer.find(programmerId).map { programmer =>
+        programmer.copy(companyId = None).save()
+        Ok
+      } getOrElse BadRequest("Programmer not found!")
+    }
   }
 
   def delete(id: Long) = Action {
-    Programmer.find(id).map { programmer =>
-      programmer.destroy()
-      NoContent
-    } getOrElse NotFound
+    db.withTransaction { implicit conn =>
+      Programmer.find(id).map { programmer =>
+        programmer.destroy()
+        NoContent
+      } getOrElse NotFound
+    }
   }
 
 }

@@ -1,7 +1,11 @@
 package models
 
-import scalikejdbc._
+import db.Tables
+import java.sql.{Connection, Timestamp}
 import org.joda.time.DateTime
+import org.jooq._
+import org.jooq.impl.DSL
+import scala.collection.JavaConverters._
 
 case class Programmer(
     id: Long,
@@ -12,124 +16,128 @@ case class Programmer(
     createdAt: DateTime,
     deletedAt: Option[DateTime] = None) {
 
-  def save()(implicit session: DBSession = Programmer.autoSession): Programmer = Programmer.save(this)(session)
-  def destroy()(implicit session: DBSession = Programmer.autoSession): Unit = Programmer.destroy(id)(session)
+  def save()(implicit conn: Connection): Programmer = Programmer.save(this)
 
-  private val (ps, p, s) = (ProgrammerSkill.ps, Programmer.p, Skill.s)
-  private val column = ProgrammerSkill.column
+  def destroy()(implicit conn: Connection): Unit = Programmer.destroy(id)
 
-  def addSkill(skill: Skill)(implicit session: DBSession = Programmer.autoSession): Unit = withSQL {
-    insert.into(ProgrammerSkill)
-      .namedValues(column.programmerId -> id, column.skillId -> skill.id)
-  }.update.apply()
+  import Tables.{PROGRAMMER_SKILL => ps}
 
-  def deleteSkill(skill: Skill)(implicit session: DBSession = Programmer.autoSession): Unit = withSQL {
-    delete.from(ProgrammerSkill)
-      .where.eq(column.programmerId, id).and.eq(column.skillId, skill.id)
-  }.update.apply()
+  def addSkill(skill: Skill)(implicit conn: Connection): Unit = {
+    DSL.using(conn)
+      .insertInto(ps, ps.PROGRAMMER_ID, ps.SKILL_ID)
+      .values(id, skill.id)
+      .execute()
+  }
+
+  def deleteSkill(skill: Skill)(implicit conn: Connection): Unit = {
+    DSL.using(conn)
+      .deleteFrom(ps)
+      .where(ps.PROGRAMMER_ID.equal(id).and(ps.SKILL_ID.equal(skill.id)))
+      .execute()
+  }
 
 }
 
-object Programmer extends SQLSyntaxSupport[Programmer] {
+object Programmer {
 
-  // If the table name is same as snake_case'd name of this companion object, you don't need to specify tableName explicitly.
-  override val tableName = "programmer"
-  // By default, column names will be cached from meta data automatically when accessing this table for the first time.
-  override val columns = Seq("id", "name", "company_id", "created_timestamp", "deleted_timestamp")
-  // If you need mapping between fields and columns, use nameConverters.
-  override val nameConverters = Map("At$" -> "_timestamp")
-
-  // simple extractor
-  def apply(p: SyntaxProvider[Programmer])(rs: WrappedResultSet): Programmer = apply(p.resultName)(rs)
-  def apply(p: ResultName[Programmer])(rs: WrappedResultSet): Programmer = new Programmer(
-    id = rs.get(p.id),
-    name = rs.get(p.name),
-    companyId = rs.get(p.companyId),
-    createdAt = rs.get(p.createdAt),
-    deletedAt = rs.get(p.deletedAt)
-  )
-
-  // join query with company table
-  def apply(p: SyntaxProvider[Programmer], c: SyntaxProvider[Company])(rs: WrappedResultSet): Programmer = {
-    apply(p.resultName)(rs).copy(company = rs.longOpt(c.resultName.id).flatMap { _ =>
-      if (rs.timestampOpt(c.resultName.deletedAt).isEmpty) Some(Company(c)(rs)) else None
-    })
+  def apply(p: db.tables.Programmer): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
+    def map(record: Record): Programmer = Programmer(
+      id = record.getValue(p.ID),
+      name = record.getValue(p.NAME),
+      companyId = Option(record.getValue(p.COMPANY_ID)).map(_.toLong),
+      createdAt = new DateTime(record.getValue(p.CREATED_TIMESTAMP)),
+      deletedAt = Option(record.getValue(p.DELETED_TIMESTAMP)).map(new DateTime(_))
+    )
   }
 
-  // SyntaxProvider objects
-  val p = Programmer.syntax("p")
+  def apply(p: db.tables.Programmer, c: db.tables.Company): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
+    val prm = Programmer(p)
+    val crm = Company.opt(c)
+    def map(record: Record): Programmer = prm.map(record).copy(company = crm.map(record))
+  }
+
+  val p = Tables.PROGRAMMER.as("p")
 
   private val (c, s, ps) = (Company.c, Skill.s, ProgrammerSkill.ps)
 
   // reusable part of SQL
-  private val isNotDeleted = sqls.isNull(p.deletedAt)
+  private val isNotDeleted = p.DELETED_TIMESTAMP.isNull
 
   // find by primary key
-  def find(id: Long)(implicit session: DBSession = autoSession): Option[Programmer] = withSQL {
-    select
-      .from(Programmer as p)
-      .leftJoin(Company as c).on(p.companyId, c.id)
-      .leftJoin(ProgrammerSkill as ps).on(ps.programmerId, p.id)
-      .leftJoin(Skill as s).on(sqls.eq(ps.skillId, s.id).and.isNull(s.deletedAt))
-      .where.eq(p.id, id).and.append(isNotDeleted)
-  }.one(Programmer(p, c))
-    .toMany(Skill.opt(s))
-    .map { (programmer, skills) => programmer.copy(skills = skills) }
-    .single.apply()
+  def find(id: Long)(implicit conn: Connection): Option[Programmer] = {
+    DSL.using(conn)
+      .select(p.fields() ++ c.fields() ++ s.fields(): _*)
+      .from(p)
+      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
+      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
+      .where(p.ID.equal(id).and(isNotDeleted))
+      .fetchGroups(p.ID).asScala
+      .get(id)
+      .map(rs => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten))
+  }
 
   // programmer with company(optional) with skills(many)
-  def findAll()(implicit session: DBSession = autoSession): List[Programmer] = withSQL {
-    select
-      .from(Programmer as p)
-      .leftJoin(Company as c).on(p.companyId, c.id)
-      .leftJoin(ProgrammerSkill as ps).on(ps.programmerId, p.id)
-      .leftJoin(Skill as s).on(sqls.eq(ps.skillId, s.id).and.isNull(s.deletedAt))
-      .where.append(isNotDeleted)
-      .orderBy(p.id)
-  }.one(Programmer(p, c))
-    .toMany(Skill.opt(s))
-    .map { (programmer, skills) => programmer.copy(skills = skills) }
-    .list.apply()
+  def findAll()(implicit conn: Connection): List[Programmer] = {
+    DSL.using(conn)
+      .select(p.fields() ++ c.fields() ++ s.fields(): _*)
+      .from(p)
+      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
+      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
+      .where(isNotDeleted)
+      .fetchGroups(p.ID).asScala
+      .map {
+        case (_, rs) => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten)
+      }(collection.breakOut)
+  }
 
-  def findNoSkillProgrammers()(implicit session: DBSession = autoSession): List[Programmer] = withSQL {
-    select
-      .from(Programmer as p)
-      .leftJoin(Company as c).on(p.companyId, c.id)
-      .where.notIn(p.id, select(sqls.distinct(ps.programmerId)).from(ProgrammerSkill as ps))
-      .and.append(isNotDeleted)
-      .orderBy(p.id)
-  }.map(Programmer(p, c)).list.apply()
+  def findNoSkillProgrammers()(implicit conn: Connection): List[Programmer] = {
+    DSL.using(conn)
+      .select(p.fields() ++ c.fields(): _*)
+      .from(p)
+      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID))
+      .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)).and(isNotDeleted))
+      .orderBy(p.ID)
+      .fetch(Programmer(p, c)).asScala.toList
+  }
 
-  def countAll()(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Programmer as p).where.append(isNotDeleted)
-  }.map(rs => rs.long(1)).single.apply().get
+  def countAll()(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(p).where(isNotDeleted).fetchOne().value1()
+  }
 
-  def findAllBy(where: SQLSyntax, withCompany: Boolean = true)(implicit session: DBSession = autoSession): List[Programmer] = withSQL {
-    select
-      .from[Programmer](Programmer as p)
-      .map(sql => if (withCompany) sql.leftJoin(Company as c).on(p.companyId, c.id) else sql) // dynamic
-      .leftJoin(ProgrammerSkill as ps).on(ps.programmerId, p.id)
-      .leftJoin(Skill as s).on(sqls.eq(ps.skillId, s.id).and.isNull(s.deletedAt))
-      .where.append(isNotDeleted).and.append(sqls"${where}")
-  }.one(rs => if (withCompany) Programmer(p, c)(rs) else Programmer(p)(rs))
-    .toMany(Skill.opt(s))
-    .map { (programmer, skills) => programmer.copy(skills = skills) }
-    .list.apply()
+  def findAllBy(where: Condition, withCompany: Boolean = true)(implicit conn: Connection): List[Programmer] = {
+    val mapper = if (withCompany) Programmer(p, c) else Programmer(p)
+    val q = DSL.using(conn)
+      .select(p.fields() ++ c.fields(): _*)
+      .from(p)
 
-  def countBy(where: SQLSyntax)(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Programmer as p).where.append(isNotDeleted).and.append(sqls"${where}")
-  }.map(_.long(1)).single.apply().get
+    (if (withCompany) q.leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull)) else q)
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
+      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
+      .where(where.and(isNotDeleted))
+      .fetchGroups(p.ID).asScala
+      .map {
+        case (_, rs) =>
+          rs.get(0).map(mapper).copy(skills = rs.map(Skill.opt(s)).asScala.flatten)
+      }(collection.breakOut)
+  }
 
-  def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession = autoSession): Programmer = {
-    if (companyId.isDefined && Company.find(companyId.get).isEmpty) {
-      throw new IllegalArgumentException(s"Company is not found! (companyId: ${companyId})")
+  def countBy(where: Condition)(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(p).where(where.and(isNotDeleted)).fetchOne().value1()
+  }
+
+  def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Programmer = {
+    if (companyId.map(Company.find).exists(_.isEmpty)) {
+      throw new IllegalArgumentException(s"Company is not found! (companyId: $companyId)")
     }
-    val id = withSQL {
-      insert.into(Programmer).namedValues(
-        column.name -> name, 
-        column.companyId -> companyId, 
-        column.createdAt -> createdAt)
-    }.updateAndReturnGeneratedKey.apply()
+    val p = Tables.PROGRAMMER
+
+    val id = DSL.using(conn)
+      .insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_TIMESTAMP)
+      .values(name, companyId.map(Long.box).orNull, new Timestamp(createdAt.getMillis))
+      .returning(p.ID)
+      .fetchOne().getId
 
     Programmer(
       id = id,
@@ -139,18 +147,22 @@ object Programmer extends SQLSyntaxSupport[Programmer] {
       createdAt = createdAt)
   }
 
-  def save(m: Programmer)(implicit session: DBSession = autoSession): Programmer = {
-    withSQL {
-      update(Programmer).set(
-        column.name -> m.name, 
-        column.companyId -> m.companyId
-      ).where.eq(column.id, m.id).and.isNull(column.deletedAt)
-    }.update.apply()
+  def save(m: Programmer)(implicit conn: Connection): Programmer = {
+    DSL.using(conn)
+      .update(p)
+      .set(p.NAME, m.name)
+      .set(p.COMPANY_ID, m.companyId.map(Long.box).orNull)
+      .where(p.ID.equal(m.id).and(isNotDeleted))
+      .execute()
     m
   }
 
-  def destroy(id: Long)(implicit session: DBSession = autoSession): Unit = withSQL {
-    update(Programmer).set(column.deletedAt -> DateTime.now).where.eq(column.id, id)
-  }.update.apply()
+  def destroy(id: Long)(implicit conn: Connection): Unit = {
+    DSL.using(conn)
+      .update(p)
+      .set(p.DELETED_TIMESTAMP, new Timestamp(DateTime.now.getMillis))
+      .where(p.ID.equal(id).and(isNotDeleted))
+      .execute()
+  }
 
 }

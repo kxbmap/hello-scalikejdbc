@@ -1,7 +1,11 @@
 package models
 
-import scalikejdbc._
+import db.Tables
+import java.sql.{Connection, Timestamp}
 import org.joda.time.DateTime
+import org.jooq.impl.DSL
+import org.jooq.{Condition, Record, RecordMapper}
+import scala.collection.JavaConverters._
 
 case class Company(
     id: Long,
@@ -10,71 +14,87 @@ case class Company(
     createdAt: DateTime,
     deletedAt: Option[DateTime] = None) {
 
-  def save()(implicit session: DBSession = Company.autoSession): Company = Company.save(this)(session)
-  def destroy()(implicit session: DBSession = Company.autoSession): Unit = Company.destroy(id)(session)
+  def save()(implicit conn: Connection): Company = Company.save(this)
+
+  def destroy()(implicit conn: Connection): Unit = Company.destroy(id)
 }
 
-object Company extends SQLSyntaxSupport[Company] {
+object Company {
 
-  def apply(c: SyntaxProvider[Company])(rs: WrappedResultSet): Company = apply(c.resultName)(rs)
-  def apply(c: ResultName[Company])(rs: WrappedResultSet): Company = new Company(
-    id = rs.get(c.id),
-    name = rs.get(c.name),
-    url = rs.get(c.url),
-    createdAt = rs.get(c.createdAt),
-    deletedAt = rs.get(c.deletedAt)
-  )
+  def apply(c: db.tables.Company): RecordMapper[Record, Company] = new RecordMapper[Record, Company] {
+    def map(record: Record): Company = Company(
+      id = record.getValue(c.ID),
+      name = record.getValue(c.NAME),
+      url = Option(record.getValue(c.URL)),
+      createdAt = new DateTime(record.getValue(c.CREATED_AT)),
+      deletedAt = Option(record.getValue(c.DELETED_AT)).map(new DateTime(_))
+    )
+  }
 
-  val c = Company.syntax("c")
-  private val isNotDeleted = sqls.isNull(c.deletedAt)
+  def opt(c: db.tables.Company): RecordMapper[Record, Option[Company]] = new RecordMapper[Record, Option[Company]] {
+    val crm = Company(c)
+    def map(record: Record): Option[Company] = Option(record.getValue(c.ID)).map(_ => crm.map(record))
+  }
 
-  def find(id: Long)(implicit session: DBSession = autoSession): Option[Company] = withSQL {
-    select.from(Company as c).where.eq(c.id, id).and.append(isNotDeleted)
-  }.map(Company(c)).single.apply()
+  val c = Tables.COMPANY.as("c")
+  private val isNotDeleted = c.DELETED_AT.isNull
 
-  def findAll()(implicit session: DBSession = autoSession): List[Company] = withSQL {
-    select.from(Company as c)
-      .where.append(isNotDeleted)
-      .orderBy(c.id)
-  }.map(Company(c)).list.apply()
+  def find(id: Long)(implicit conn: Connection): Option[Company] = {
+    Option(DSL.using(conn).selectFrom(c).where(c.ID.equal(id).and(isNotDeleted)).fetchOne(Company(c)))
+  }
 
-  def countAll()(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Company as c).where.append(isNotDeleted)
-  }.map(rs => rs.long(1)).single.apply().get
+  def findAll()(implicit conn: Connection): List[Company] = {
+    DSL.using(conn)
+      .selectFrom(c)
+      .where(isNotDeleted)
+      .orderBy(c.ID)
+      .fetch(Company(c)).asScala.toList
+  }
 
-  def findAllBy(where: SQLSyntax)(implicit session: DBSession = autoSession): List[Company] = withSQL {
-    select.from(Company as c)
-      .where.append(isNotDeleted).and.append(sqls"${where}")
-      .orderBy(c.id)
-  }.map(Company(c)).list.apply()
+  def countAll()(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(c).where(isNotDeleted).fetchOne().value1()
+  }
 
-  def countBy(where: SQLSyntax)(implicit session: DBSession = autoSession): Long = withSQL {
-    select(sqls.count).from(Company as c).where.append(isNotDeleted).and.append(sqls"${where}")
-  }.map(_.long(1)).single.apply().get
+  def findAllBy(where: Condition)(implicit conn: Connection): List[Company] = {
+    DSL.using(conn)
+      .selectFrom(c)
+      .where(where.and(isNotDeleted))
+      .orderBy(c.ID)
+      .fetch(Company(c)).asScala.toList
+  }
 
-  def create(name: String, url: Option[String] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession = autoSession): Company = {
-    val id = withSQL {
-      insert.into(Company).namedValues(
-        column.name -> name, 
-        column.url -> url, 
-        column.createdAt -> createdAt)
-    }.updateAndReturnGeneratedKey.apply()
+  def countBy(where: Condition)(implicit conn: Connection): Int = {
+    DSL.using(conn).selectCount().from(c).where(where.and(isNotDeleted)).fetchOne().value1()
+  }
+
+  def create(name: String, url: Option[String] = None, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Company = {
+    val c = Tables.COMPANY
+
+    val id = DSL.using(conn)
+      .insertInto(c, c.NAME, c.URL, c.CREATED_AT)
+      .values(name, url.orNull, new Timestamp(createdAt.getMillis))
+      .returning(c.ID)
+      .fetchOne().getId
 
     Company(id = id, name = name, url = url, createdAt = createdAt)
   }
 
-  def save(m: Company)(implicit session: DBSession = autoSession): Company = {
-    withSQL {
-      update(Company).set(
-        column.name -> m.name, 
-        column.url -> m.url
-      ).where.eq(column.id, m.id).and.isNull(column.deletedAt)
-    }.update.apply()
+  def save(m: Company)(implicit conn: Connection): Company = {
+    DSL.using(conn)
+      .update(c)
+      .set(c.NAME, m.name)
+      .set(c.URL, m.url.orNull)
+      .where(c.ID.equal(m.id).and(isNotDeleted))
+      .execute()
     m
   }
 
-  def destroy(id: Long)(implicit session: DBSession = autoSession): Unit = withSQL {
-    update(Company).set(column.deletedAt -> DateTime.now).where.eq(column.id, id)
-  }.update.apply()
+  def destroy(id: Long)(implicit conn: Connection): Unit = {
+    DSL.using(conn)
+      .update(c)
+      .set(c.DELETED_AT, new Timestamp(DateTime.now.getMillis))
+      .where(c.ID.equal(id).and(isNotDeleted))
+      .execute()
+  }
 
 }

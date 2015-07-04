@@ -1,15 +1,18 @@
 package models
 
-import scalikejdbc.specs2.mutable.AutoRollback
+import db.Tables
+import org.jooq.impl.DSL
 import org.specs2.mutable._
-import org.joda.time._
-import scalikejdbc._, SQLInterpolation._
+import scalikejdbc._
+import scalikejdbc.specs2.mutable.AutoRollback
 
 class CompanySpec extends Specification with settings.DBSettings {
 
   trait AutoRollbackWithFixture extends AutoRollback {
+    implicit def connection = _db.withinTxSession().connection
+
     override def fixture(implicit session: DBSession) {
-      applyUpdate(delete from Company)
+      DSL.using(session.connection).deleteFrom(Tables.COMPANY).execute()
       Company.create("Typesafe", Some("http://typesafe.com"))
       Company.create("Oracle")
       Company.create("Amazon")
@@ -24,19 +27,19 @@ class CompanySpec extends Specification with settings.DBSettings {
     }
     "find all records" in new AutoRollbackWithFixture {
       val allResults = Company.findAll()
-      allResults.size should_== (3)
+      allResults.size should_== 3
     }
     "count all records" in new AutoRollbackWithFixture {
       val count = Company.countAll()
-      count should_== (3L)
+      count should_== 3L
     }
     "find by where clauses" in new AutoRollbackWithFixture {
-      val results = Company.findAllBy(sqls.isNull(Company.column.url))
-      results.size should_== (2)
+      val results = Company.findAllBy(Company.c.URL.isNull)
+      results.size should_== 2
     }
     "count by where clauses" in new AutoRollbackWithFixture {
-      val count = Company.countBy(sqls.isNotNull(Company.column.url))
-      count should_== (1L)
+      val count = Company.countBy(Company.c.URL.isNotNull)
+      count should_== 1L
     }
     "create new record" in new AutoRollbackWithFixture {
       val newCompany = Company.create("Microsoft")
@@ -46,14 +49,14 @@ class CompanySpec extends Specification with settings.DBSettings {
       val entity = Company.findAll().head
       entity.copy(name = "Google").save()
       val updated = Company.find(entity.id).get
-      updated.name should_== ("Google")
+      updated.name should_== "Google"
     }
     "destroy a record" in new AutoRollbackWithFixture {
       val entity = Company.findAll().head
       entity.destroy()
       val shouldBeNone = Company.find(entity.id)
       shouldBeNone.isDefined should beFalse
-      Company.countAll should_== (2L)
+      Company.countAll should_== 2L
     }
   }
 
