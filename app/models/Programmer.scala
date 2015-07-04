@@ -1,7 +1,7 @@
 package models
 
 import db.Tables
-import java.sql.{Connection, Timestamp}
+import java.sql.Connection
 import org.joda.time.DateTime
 import org.jooq._
 import org.jooq.impl.DSL
@@ -45,8 +45,8 @@ object Programmer {
       id = record.getValue(p.ID),
       name = record.getValue(p.NAME),
       companyId = Option(record.getValue(p.COMPANY_ID)).map(_.toLong),
-      createdAt = new DateTime(record.getValue(p.CREATED_TIMESTAMP)),
-      deletedAt = Option(record.getValue(p.DELETED_TIMESTAMP)).map(new DateTime(_))
+      createdAt = record.getValue(p.CREATED_AT),
+      deletedAt = Option(record.getValue(p.DELETED_AT))
     )
   }
 
@@ -61,7 +61,7 @@ object Programmer {
   private val (c, s, ps) = (Company.c, Skill.s, ProgrammerSkill.ps)
 
   // reusable part of SQL
-  private val isNotDeleted = p.DELETED_TIMESTAMP.isNull
+  private val isNotDeleted = p.DELETED_AT.isNull
 
   // find by primary key
   def find(id: Long)(implicit conn: Connection): Option[Programmer] = {
@@ -134,8 +134,8 @@ object Programmer {
     val p = Tables.PROGRAMMER
 
     val id = DSL.using(conn)
-      .insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_TIMESTAMP)
-      .values(name, companyId.map(Long.box).orNull, new Timestamp(createdAt.getMillis))
+      .insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_AT)
+      .values(name, companyId.map(Long.box).orNull, createdAt)
       .returning(p.ID)
       .fetchOne().getId
 
@@ -160,7 +160,7 @@ object Programmer {
   def destroy(id: Long)(implicit conn: Connection): Unit = {
     DSL.using(conn)
       .update(p)
-      .set(p.DELETED_TIMESTAMP, new Timestamp(DateTime.now.getMillis))
+      .set(p.DELETED_AT, DateTime.now)
       .where(p.ID.equal(id).and(isNotDeleted))
       .execute()
   }

@@ -1,7 +1,7 @@
 package models
 
 import db.Tables
-import java.sql.{Connection, Timestamp}
+import java.sql.Connection
 import org.joda.time.DateTime
 import org.jooq.impl.DSL
 import org.jooq.{Condition, Record, RecordMapper}
@@ -70,7 +70,7 @@ object Skill {
 
     val id = DSL.using(conn)
       .insertInto(s, s.NAME, s.CREATED_AT)
-      .values(name, new Timestamp(createdAt.getMillis))
+      .values(name, createdAt)
       .returning(s.ID)
       .fetchOne().getId
 
@@ -89,7 +89,7 @@ object Skill {
   def destroy(id: Long)(implicit conn: Connection): Unit = {
     DSL.using(conn)
       .update(s)
-      .set(s.DELETED_AT, new Timestamp(DateTime.now.getMillis))
+      .set(s.DELETED_AT, DateTime.now)
       .where(s.ID.equal(id).and(isNotDeleted))
       .execute()
   }

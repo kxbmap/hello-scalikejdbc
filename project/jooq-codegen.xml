@@ -73,6 +73,19 @@
                  If left empty, jOOQ will generate all available schemata. See the
                  manual's next section to learn how to generate several schemata -->
             <inputSchema>PUBLIC</inputSchema>
+
+            <customTypes>
+                <customType>
+                    <name>org.joda.time.DateTime</name>
+                    <converter>utils.DateTimeConverter</converter>
+                </customType>
+            </customTypes>
+            <forcedTypes>
+                <forcedType>
+                    <name>org.joda.time.DateTime</name>
+                    <types>timestamp</types>
+                </forcedType>
+            </forcedTypes>
         </database>
 
         <generate>
