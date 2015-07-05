@@ -1,3 +1,5 @@
+lazy val h2Version = "1.4.187"
+
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .enablePlugins(SbtWeb)
@@ -16,8 +18,6 @@ lazy val root = (project in file("."))
       "org.json4s"           %% "json4s-ext"         % "3.2.11",
       "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
       "org.flywaydb"         %% "flyway-play"        % "2.0.1",
-      "org.scalikejdbc"      %% "scalikejdbc-test"   % scalikejdbcVersion % "test",
-      "org.scalikejdbc"      %% "scalikejdbc-config" % scalikejdbcVersion % "test",
       specs2 % "test"
     ),
     checksums := Nil, // play-json4s-native_2.11-0.4.0.pom: invalid sha1
@@ -39,9 +39,6 @@ lazy val root = (project in file("."))
     codegen in jooq <<= (codegen in jooq).dependsOn(flywayMigrate in migration)
   )
   .dependsOn(migration)
-
-lazy val scalikejdbcVersion = "2.2.+"
-lazy val h2Version = "1.4.+"
 
 lazy val migration = project.settings(
   name := "hello-scalikejdbc-migration",

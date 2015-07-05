@@ -3,16 +3,14 @@ package models
 import db.Tables
 import org.jooq.impl.DSL
 import org.specs2.mutable._
-import scalikejdbc._
-import scalikejdbc.specs2.mutable.AutoRollback
+import utils.AutoRollback
 
-class SkillSpec extends Specification with settings.DBSettings {
+class SkillSpec extends Specification {
 
   trait AutoRollbackWithFixture extends AutoRollback {
-    implicit def connection = _db.withinTxSession().connection
-
-    override def fixture(implicit session: DBSession) {
-      DSL.using(session.connection).deleteFrom(Tables.SKILL).execute()
+    locally {
+      val ctx = DSL.using(connection)
+      ctx.deleteFrom(Tables.SKILL).execute()
       Skill.create("Scala")
       Skill.create("Java")
       Skill.create("Ruby")

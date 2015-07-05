@@ -3,18 +3,13 @@ package models
 import db.Tables
 import org.jooq.impl.DSL
 import org.specs2.mutable._
-import scalikejdbc._
-import scalikejdbc.specs2.mutable.AutoRollback
+import utils.AutoRollback
 
-class ProgrammerSpec extends Specification with settings.DBSettings {
-
-  val _p = Programmer.p
+class ProgrammerSpec extends Specification {
 
   trait AutoRollbackWithFixture extends AutoRollback {
-    implicit def connection = _db.withinTxSession().connection
-
-    override def fixture(implicit session: DBSession) {
-      val ctx = DSL.using(session.connection)
+    locally {
+      val ctx = DSL.using(connection)
       ctx.deleteFrom(Tables.PROGRAMMER_SKILL).execute()
       ctx.deleteFrom(Tables.PROGRAMMER).execute()
       ctx.deleteFrom(Tables.SKILL).execute()
@@ -43,7 +38,7 @@ class ProgrammerSpec extends Specification with settings.DBSettings {
 
   "Programmer" should {
     "find with skills" in new AutoRollbackWithFixture {
-      val seratch = Programmer.findAllBy(_p.NAME.equal("seratch")).head
+      val seratch = Programmer.findAllBy(Programmer.p.NAME.equal("seratch")).head
       seratch.skills.size should_== 3
     }
     "find no skill programmers" in new AutoRollbackWithFixture {
@@ -64,11 +59,11 @@ class ProgrammerSpec extends Specification with settings.DBSettings {
       count should_== 3L
     }
     "find by where clauses" in new AutoRollbackWithFixture {
-      val results = Programmer.findAllBy(_p.COMPANY_ID.isNotNull)
+      val results = Programmer.findAllBy(Programmer.p.COMPANY_ID.isNotNull)
       results.head.name should_== "seratch"
     }
     "count by where clauses" in new AutoRollbackWithFixture {
-      val count = Programmer.countBy(_p.COMPANY_ID.isNull)
+      val count = Programmer.countBy(Programmer.p.COMPANY_ID.isNull)
       count should_== 2L
     }
     "create new record" in new AutoRollbackWithFixture {
