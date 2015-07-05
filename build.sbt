@@ -3,7 +3,7 @@ lazy val h2Version = "1.4.187"
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .enablePlugins(SbtWeb)
-  .enablePlugins(JooqPlugin)
+  .enablePlugins(JooqCodegen)
   .settings(
     name := "hello-scalikejdbc",
     version := "0.1",
@@ -34,9 +34,9 @@ lazy val root = (project in file("."))
     cleanupCommands := """
       __connection.close()
     """,
-    jooqConfigFile := file("project") / "jooq-codegen.xml",
+    jooqCodegenConfigFile := Some(file("project") / "jooq-codegen.xml"),
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq",
-    codegen in jooq <<= (codegen in jooq).dependsOn(flywayMigrate in migration)
+    jooqCodegen <<= jooqCodegen.dependsOn(flywayMigrate in migration)
   )
   .dependsOn(migration)
 
