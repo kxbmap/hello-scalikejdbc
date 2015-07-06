@@ -24,8 +24,8 @@ object Skill {
     def map(record: Record): Skill = Skill(
       id = record.getValue(s.ID),
       name = record.getValue(s.NAME),
-      createdAt = new DateTime(record.getValue(s.CREATED_AT)),
-      deletedAt = Option(record.getValue(s.DELETED_AT)).map(new DateTime(_))
+      createdAt = record.getValue(s.CREATED_AT),
+      deletedAt = Option(record.getValue(s.DELETED_AT))
     )
   }
 

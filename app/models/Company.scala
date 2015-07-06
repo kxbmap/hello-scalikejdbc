@@ -26,8 +26,8 @@ object Company {
       id = record.getValue(c.ID),
       name = record.getValue(c.NAME),
       url = Option(record.getValue(c.URL)),
-      createdAt = new DateTime(record.getValue(c.CREATED_AT)),
-      deletedAt = Option(record.getValue(c.DELETED_AT)).map(new DateTime(_))
+      createdAt = record.getValue(c.CREATED_AT),
+      deletedAt = Option(record.getValue(c.DELETED_AT))
     )
   }
 
