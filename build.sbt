@@ -14,6 +14,7 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       jdbc,
+      "org.jooq"             %  "jooq"               % jooqVersion.value,
       "com.h2database"       %  "h2"                 % h2Version,
       "org.json4s"           %% "json4s-ext"         % "3.2.11",
       "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
@@ -34,9 +35,9 @@ lazy val root = (project in file("."))
     cleanupCommands := """
       __connection.close()
     """,
-    jooqCodegenConfigFile := Some(file("project") / "jooq-codegen.xml"),
-    libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq",
-    jooqCodegen <<= jooqCodegen.dependsOn(flywayMigrate in migration)
+    jooqCodegen in Compile <<= (jooqCodegen in Compile).dependsOn(flywayMigrate in migration),
+    jooqCodegenConfigFile in Compile := Some(file("project") / "jooq-codegen.xml"),
+    libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
   .dependsOn(migration)
 
