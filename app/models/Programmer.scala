@@ -67,7 +67,7 @@ object Programmer {
   // find by primary key
   def find(id: Long)(implicit conn: Connection): Option[Programmer] = {
     DSL.using(conn)
-      .select(p.fields() ++ c.fields() ++ s.fields(): _*)
+      .select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
@@ -81,7 +81,7 @@ object Programmer {
   // programmer with company(optional) with skills(many)
   def findAll()(implicit conn: Connection): List[Programmer] = {
     DSL.using(conn)
-      .select(p.fields() ++ c.fields() ++ s.fields(): _*)
+      .select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
@@ -95,7 +95,7 @@ object Programmer {
 
   def findNoSkillProgrammers()(implicit conn: Connection): List[Programmer] = {
     DSL.using(conn)
-      .select(p.fields() ++ c.fields(): _*)
+      .select(p.fields()).select(c.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID))
       .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)).and(isNotDeleted))
@@ -110,7 +110,7 @@ object Programmer {
   def findAllBy(where: Condition, withCompany: Boolean = true)(implicit conn: Connection): List[Programmer] = {
     val mapper = if (withCompany) Programmer(p, c) else Programmer(p)
     val q = DSL.using(conn)
-      .select(p.fields() ++ c.fields(): _*)
+      .select(p.fields()).select(c.fields())
       .from(p)
 
     (if (withCompany) q.leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull)) else q)
