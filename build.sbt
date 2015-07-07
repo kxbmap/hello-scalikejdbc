@@ -40,6 +40,9 @@ lazy val root = (project in file("."))
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
   .dependsOn(migration)
+  .dependsOn(scalaJooqCore)
+
+lazy val scalaJooqCore = ProjectRef(file("..") / "scala-jooq", "core")
 
 lazy val migration = project.settings(
   name := "hello-scalikejdbc-migration",
