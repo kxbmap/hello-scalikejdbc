@@ -39,7 +39,7 @@ class ProgrammerSpec extends Specification {
   "Programmer" should {
     "find with skills" in new AutoRollbackWithFixture {
       val seratch = Programmer.findAllBy(Programmer.p.NAME.equal("seratch")).head
-      seratch.skills.size should_== 3
+      seratch.skills.map(_.name) should_== Seq("Scala", "Java", "Ruby")
     }
     "find no skill programmers" in new AutoRollbackWithFixture {
       val noSkillProgrammers = Programmer.findNoSkillProgrammers()
@@ -61,6 +61,10 @@ class ProgrammerSpec extends Specification {
     "find by where clauses" in new AutoRollbackWithFixture {
       val results = Programmer.findAllBy(Programmer.p.COMPANY_ID.isNotNull)
       results.head.name should_== "seratch"
+    }
+    "find by where clauses without company" in new AutoRollbackWithFixture {
+      val results = Programmer.findAllBy(Programmer.p.NAME.equal("seratch"), withCompany = false)
+      results.head.company should beNone
     }
     "count by where clauses" in new AutoRollbackWithFixture {
       val count = Programmer.countBy(Programmer.p.COMPANY_ID.isNull)
