@@ -108,19 +108,18 @@ object Programmer {
   }
 
   def findAllBy(where: Condition, withCompany: Boolean = true)(implicit conn: Connection): List[Programmer] = {
-    val mapper = if (withCompany) Programmer(p, c) else Programmer(p)
-    val q = DSL.using(conn)
+    val prm = if (withCompany) Programmer(p, c) else Programmer(p)
+    val srm = Skill.opt(s)
+    DSL.using(conn)
       .select(p.fields()).select(c.fields())
       .from(p)
-
-    (if (withCompany) q.leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull)) else q)
+      .mapWhen(withCompany)(_.leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull)))
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
       .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
       .where(where.and(isNotDeleted))
       .fetchGroups(p.ID).asScala
       .map {
-        case (_, rs) =>
-          rs.get(0).map(mapper).copy(skills = rs.map(Skill.opt(s)).asScala.flatten)
+        case (_, rs) => rs.get(0).map(prm).copy(skills = rs.map(srm).asScala.flatten)
       }(collection.breakOut)
   }
 
