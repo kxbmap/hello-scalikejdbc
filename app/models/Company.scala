@@ -1,5 +1,6 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
 import java.sql.Connection
 import org.joda.time.DateTime
@@ -23,17 +24,17 @@ object Company {
 
   def apply(c: db.tables.Company): RecordMapper[Record, Company] = new RecordMapper[Record, Company] {
     def map(record: Record): Company = Company(
-      id = record.getValue(c.ID),
-      name = record.getValue(c.NAME),
-      url = Option(record.getValue(c.URL)),
-      createdAt = record.getValue(c.CREATED_AT),
-      deletedAt = Option(record.getValue(c.DELETED_AT))
+      id = record.get(c.ID),
+      name = record.get(c.NAME),
+      url = record.getOpt(c.URL),
+      createdAt = record.get(c.CREATED_AT),
+      deletedAt = record.getOpt(c.DELETED_AT)
     )
   }
 
   def opt(c: db.tables.Company): RecordMapper[Record, Option[Company]] = new RecordMapper[Record, Option[Company]] {
     val crm = Company(c)
-    def map(record: Record): Option[Company] = Option(record.getValue(c.ID)).map(_ => crm.map(record))
+    def map(record: Record): Option[Company] = record.getOpt(c.ID).map(_ => crm.map(record))
   }
 
   val c = Tables.COMPANY.as("c")

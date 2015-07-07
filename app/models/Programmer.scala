@@ -1,5 +1,6 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
 import java.sql.Connection
 import org.joda.time.DateTime
@@ -42,11 +43,11 @@ object Programmer {
 
   def apply(p: db.tables.Programmer): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
     def map(record: Record): Programmer = Programmer(
-      id = record.getValue(p.ID),
-      name = record.getValue(p.NAME),
-      companyId = Option(record.getValue(p.COMPANY_ID)).map(_.toLong),
-      createdAt = record.getValue(p.CREATED_AT),
-      deletedAt = Option(record.getValue(p.DELETED_AT))
+      id = record.get(p.ID),
+      name = record.get(p.NAME),
+      companyId = record.getOpt(p.COMPANY_ID),
+      createdAt = record.get(p.CREATED_AT),
+      deletedAt = record.getOpt(p.DELETED_AT)
     )
   }
 
@@ -135,7 +136,7 @@ object Programmer {
 
     val id = DSL.using(conn)
       .insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_AT)
-      .values(name, companyId.map(Long.box).orNull, createdAt)
+      .values(name, companyId.boxed.orNull, createdAt)
       .returning(p.ID)
       .fetchOne().getId
 
@@ -151,7 +152,7 @@ object Programmer {
     DSL.using(conn)
       .update(p)
       .set(p.NAME, m.name)
-      .set(p.COMPANY_ID, m.companyId.map(Long.box).orNull)
+      .set(p.COMPANY_ID, m.companyId.boxed.orNull)
       .where(p.ID.equal(m.id).and(isNotDeleted))
       .execute()
     m

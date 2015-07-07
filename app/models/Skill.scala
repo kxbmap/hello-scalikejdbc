@@ -1,5 +1,6 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
 import java.sql.Connection
 import org.joda.time.DateTime
@@ -22,16 +23,16 @@ object Skill {
 
   def apply(s: db.tables.Skill): RecordMapper[Record, Skill] = new RecordMapper[Record, Skill] {
     def map(record: Record): Skill = Skill(
-      id = record.getValue(s.ID),
-      name = record.getValue(s.NAME),
-      createdAt = record.getValue(s.CREATED_AT),
-      deletedAt = Option(record.getValue(s.DELETED_AT))
+      id = record.get(s.ID),
+      name = record.get(s.NAME),
+      createdAt = record.get(s.CREATED_AT),
+      deletedAt = record.getOpt(s.DELETED_AT)
     )
   }
 
   def opt(s: db.tables.Skill): RecordMapper[Record, Option[Skill]] = new RecordMapper[Record, Option[Skill]] {
     val srm = Skill(s)
-    def map(record: Record): Option[Skill] = Option(record.getValue(s.ID)).map(_ => srm.map(record))
+    def map(record: Record): Option[Skill] = record.getOpt(s.ID).map(_ => srm.map(record))
   }
 
   val s = Tables.SKILL.as("s")
