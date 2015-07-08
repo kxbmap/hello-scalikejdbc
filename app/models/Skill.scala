@@ -39,7 +39,7 @@ object Skill {
   private val isNotDeleted = s.DELETED_AT.isNull
 
   def find(id: Long)(implicit conn: Connection): Option[Skill] = {
-    Option(DSL.using(conn).selectFrom(s).where(s.ID.equal(id).and(isNotDeleted)).fetchOne(Skill(s)))
+    Option(DSL.using(conn).selectFrom(s).where(s.ID === id and isNotDeleted).fetchOne(Skill(s)))
   }
 
   def findAll()(implicit conn: Connection): List[Skill] = {
@@ -57,13 +57,13 @@ object Skill {
   def findAllBy(where: Condition)(implicit conn: Connection): List[Skill] = {
     DSL.using(conn)
       .selectFrom(s)
-      .where(where.and(isNotDeleted))
+      .where(where and isNotDeleted)
       .orderBy(s.ID)
       .fetch(Skill(s)).asScala.toList
   }
 
   def countBy(where: Condition)(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(s).where(where.and(isNotDeleted)).fetchOne().value1()
+    DSL.using(conn).selectCount().from(s).where(where and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Skill = {
@@ -82,7 +82,7 @@ object Skill {
     DSL.using(conn)
       .update(s)
       .set(s.NAME, m.name)
-      .where(s.ID.equal(m.id).and(isNotDeleted))
+      .where(s.ID === m.id and isNotDeleted)
       .execute()
     m
   }
@@ -91,7 +91,7 @@ object Skill {
     DSL.using(conn)
       .update(s)
       .set(s.DELETED_AT, DateTime.now)
-      .where(s.ID.equal(id).and(isNotDeleted))
+      .where(s.ID === id and isNotDeleted)
       .execute()
   }
 

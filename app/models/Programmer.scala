@@ -33,7 +33,7 @@ case class Programmer(
   def deleteSkill(skill: Skill)(implicit conn: Connection): Unit = {
     DSL.using(conn)
       .deleteFrom(ps)
-      .where(ps.PROGRAMMER_ID.equal(id).and(ps.SKILL_ID.equal(skill.id)))
+      .where(ps.PROGRAMMER_ID === id and ps.SKILL_ID === skill.id)
       .execute()
   }
 
@@ -69,10 +69,10 @@ object Programmer {
     DSL.using(conn)
       .select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
-      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
-      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
-      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
-      .where(p.ID.equal(id).and(isNotDeleted))
+      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
+      .where(p.ID === id and isNotDeleted)
       .fetchGroups(p.ID).asScala
       .get(id)
       .map(rs => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten))
@@ -83,9 +83,9 @@ object Programmer {
     DSL.using(conn)
       .select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
-      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull))
-      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
-      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
+      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
       .where(isNotDeleted)
       .fetchGroups(p.ID).asScala
       .map {
@@ -97,8 +97,8 @@ object Programmer {
     DSL.using(conn)
       .select(p.fields()).select(c.fields())
       .from(p)
-      .leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID))
-      .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)).and(isNotDeleted))
+      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID)
+      .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)) and isNotDeleted)
       .orderBy(p.ID)
       .fetch(Programmer(p, c)).asScala.toList
   }
@@ -115,10 +115,10 @@ object Programmer {
       .mapWhen(withCompany)(_.select(c.fields()))
       .select(s.fields())
       .from(p)
-      .mapWhen(withCompany)(_.leftOuterJoin(c).on(p.COMPANY_ID.equal(c.ID).and(c.DELETED_AT.isNull)))
-      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID.equal(p.ID))
-      .leftOuterJoin(s).on(ps.SKILL_ID.equal(s.ID).and(s.DELETED_AT.isNull))
-      .where(where.and(isNotDeleted))
+      .mapWhen(withCompany)(_.leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull))
+      .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
+      .where(where and isNotDeleted)
       .fetchGroups(p.ID).asScala
       .map {
         case (_, rs) => rs.get(0).map(prm).copy(skills = rs.map(srm).asScala.flatten)
@@ -126,7 +126,7 @@ object Programmer {
   }
 
   def countBy(where: Condition)(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(p).where(where.and(isNotDeleted)).fetchOne().value1()
+    DSL.using(conn).selectCount().from(p).where(where and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Programmer = {
@@ -154,7 +154,7 @@ object Programmer {
       .update(p)
       .set(p.NAME, m.name)
       .set(p.COMPANY_ID, m.companyId.boxed.orNull)
-      .where(p.ID.equal(m.id).and(isNotDeleted))
+      .where(p.ID === m.id and isNotDeleted)
       .execute()
     m
   }
@@ -163,7 +163,7 @@ object Programmer {
     DSL.using(conn)
       .update(p)
       .set(p.DELETED_AT, DateTime.now)
-      .where(p.ID.equal(id).and(isNotDeleted))
+      .where(p.ID === id and isNotDeleted)
       .execute()
   }
 

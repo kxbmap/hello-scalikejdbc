@@ -41,7 +41,7 @@ object Company {
   private val isNotDeleted = c.DELETED_AT.isNull
 
   def find(id: Long)(implicit conn: Connection): Option[Company] = {
-    Option(DSL.using(conn).selectFrom(c).where(c.ID.equal(id).and(isNotDeleted)).fetchOne(Company(c)))
+    Option(DSL.using(conn).selectFrom(c).where(c.ID === id and isNotDeleted).fetchOne(Company(c)))
   }
 
   def findAll()(implicit conn: Connection): List[Company] = {
@@ -59,13 +59,13 @@ object Company {
   def findAllBy(where: Condition)(implicit conn: Connection): List[Company] = {
     DSL.using(conn)
       .selectFrom(c)
-      .where(where.and(isNotDeleted))
+      .where(where and isNotDeleted)
       .orderBy(c.ID)
       .fetch(Company(c)).asScala.toList
   }
 
   def countBy(where: Condition)(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(c).where(where.and(isNotDeleted)).fetchOne().value1()
+    DSL.using(conn).selectCount().from(c).where(where and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, url: Option[String] = None, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Company = {
@@ -85,7 +85,7 @@ object Company {
       .update(c)
       .set(c.NAME, m.name)
       .set(c.URL, m.url.orNull)
-      .where(c.ID.equal(m.id).and(isNotDeleted))
+      .where(c.ID === m.id and isNotDeleted)
       .execute()
     m
   }
@@ -94,7 +94,7 @@ object Company {
     DSL.using(conn)
       .update(c)
       .set(c.DELETED_AT, DateTime.now)
-      .where(c.ID.equal(id).and(isNotDeleted))
+      .where(c.ID === id and isNotDeleted)
       .execute()
   }
 
