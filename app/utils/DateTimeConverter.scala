@@ -1,21 +1,13 @@
 package utils
 
+import com.github.kxbmap.jooq.SimpleConverter
 import java.sql.Timestamp
 import org.joda.time.DateTime
-import org.jooq.Converter
 
-class DateTimeConverter extends Converter[Timestamp, DateTime] {
-  def from(databaseObject: Timestamp): DateTime = databaseObject match {
-    case null => null
-    case ts   => new DateTime(ts.getTime)
-  }
+@SerialVersionUID(1L)
+class DateTimeConverter extends SimpleConverter[Timestamp, DateTime] {
 
-  def to(userObject: DateTime): Timestamp = userObject match {
-    case null => null
-    case dt   => new Timestamp(dt.getMillis)
-  }
+  def fromDB(value: Timestamp): DateTime = new DateTime(value.getTime)
 
-  def fromType(): Class[Timestamp] = classOf[Timestamp]
-
-  def toType: Class[DateTime] = classOf[DateTime]
+  def toDB(value: DateTime): Timestamp = new Timestamp(value.getMillis)
 }
