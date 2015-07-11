@@ -1,22 +1,20 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
-import org.jooq.impl.DSL
 import org.specs2.mutable._
 import utils.AutoRollback
 
 class SkillSpec extends Specification {
 
   trait AutoRollbackWithFixture extends AutoRollback {
-    locally {
-      val ctx = DSL.using(connection)
-      ctx.deleteFrom(Tables.SKILL).execute()
-      Skill.create("Scala")
-      Skill.create("Java")
-      Skill.create("Ruby")
-      Skill.create("Perl")
-      Skill.create("Python")
-    }
+    dsl.deleteFrom(Tables.SKILL).execute()
+
+    Skill.create("Scala")
+    Skill.create("Java")
+    Skill.create("Ruby")
+    Skill.create("Perl")
+    Skill.create("Python")
   }
 
   "Skill" should {

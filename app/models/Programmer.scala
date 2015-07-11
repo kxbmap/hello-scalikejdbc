@@ -1,8 +1,8 @@
 package models
 
+import com.github.kxbmap.jooq.db.DBSession
 import com.github.kxbmap.jooq.syntax._
 import db.Tables
-import java.sql.Connection
 import org.joda.time.DateTime
 import org.jooq._
 import org.jooq.impl.DSL
@@ -17,22 +17,20 @@ case class Programmer(
     createdAt: DateTime,
     deletedAt: Option[DateTime] = None) {
 
-  def save()(implicit conn: Connection): Programmer = Programmer.save(this)
+  def save()(implicit session: DBSession): Programmer = Programmer.save(this)
 
-  def destroy()(implicit conn: Connection): Unit = Programmer.destroy(id)
+  def destroy()(implicit session: DBSession): Unit = Programmer.destroy(id)
 
   import Tables.{PROGRAMMER_SKILL => ps}
 
-  def addSkill(skill: Skill)(implicit conn: Connection): Unit = {
-    DSL.using(conn)
-      .insertInto(ps, ps.PROGRAMMER_ID, ps.SKILL_ID)
+  def addSkill(skill: Skill)(implicit session: DBSession): Unit = {
+    dsl.insertInto(ps, ps.PROGRAMMER_ID, ps.SKILL_ID)
       .values(id, skill.id)
       .execute()
   }
 
-  def deleteSkill(skill: Skill)(implicit conn: Connection): Unit = {
-    DSL.using(conn)
-      .deleteFrom(ps)
+  def deleteSkill(skill: Skill)(implicit session: DBSession): Unit = {
+    dsl.deleteFrom(ps)
       .where(ps.PROGRAMMER_ID === id and ps.SKILL_ID === skill.id)
       .execute()
   }
@@ -65,9 +63,8 @@ object Programmer {
   private val isNotDeleted = p.DELETED_AT.isNull
 
   // find by primary key
-  def find(id: Long)(implicit conn: Connection): Option[Programmer] = {
-    DSL.using(conn)
-      .select(p.fields()).select(c.fields()).select(s.fields())
+  def find(id: Long)(implicit session: DBSession): Option[Programmer] = {
+    dsl.select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
@@ -79,9 +76,8 @@ object Programmer {
   }
 
   // programmer with company(optional) with skills(many)
-  def findAll()(implicit conn: Connection): List[Programmer] = {
-    DSL.using(conn)
-      .select(p.fields()).select(c.fields()).select(s.fields())
+  def findAll()(implicit session: DBSession): List[Programmer] = {
+    dsl.select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
@@ -93,9 +89,8 @@ object Programmer {
       }(collection.breakOut)
   }
 
-  def findNoSkillProgrammers()(implicit conn: Connection): List[Programmer] = {
-    DSL.using(conn)
-      .select(p.fields()).select(c.fields())
+  def findNoSkillProgrammers()(implicit session: DBSession): List[Programmer] = {
+    dsl.select(p.fields()).select(c.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID === c.ID)
       .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)) and isNotDeleted)
@@ -103,15 +98,14 @@ object Programmer {
       .fetch(Programmer(p, c)).asScala.toList
   }
 
-  def countAll()(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(p).where(isNotDeleted).fetchOne().value1()
+  def countAll()(implicit session: DBSession): Int = {
+    dsl.selectCount().from(p).where(isNotDeleted).fetchOne().value1()
   }
 
-  def findAllBy(where: Condition, withCompany: Boolean = true)(implicit conn: Connection): List[Programmer] = {
+  def findAllBy(where: Condition, withCompany: Boolean = true)(implicit session: DBSession): List[Programmer] = {
     val prm = if (withCompany) Programmer(p, c) else Programmer(p)
     val srm = Skill.opt(s)
-    DSL.using(conn)
-      .select(p.fields())
+    dsl.select(p.fields())
       .mapWhen(withCompany)(_.select(c.fields()))
       .select(s.fields())
       .from(p)
@@ -125,18 +119,17 @@ object Programmer {
       }(collection.breakOut)
   }
 
-  def countBy(where: Condition)(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(p).where(where and isNotDeleted).fetchOne().value1()
+  def countBy(where: Condition)(implicit session: DBSession): Int = {
+    dsl.selectCount().from(p).where(where and isNotDeleted).fetchOne().value1()
   }
 
-  def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Programmer = {
+  def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Programmer = {
     if (companyId.map(Company.find).exists(_.isEmpty)) {
       throw new IllegalArgumentException(s"Company is not found! (companyId: $companyId)")
     }
     val p = Tables.PROGRAMMER
 
-    val id = DSL.using(conn)
-      .insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_AT)
+    val id = dsl.insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_AT)
       .values(name, companyId.boxed.orNull, createdAt)
       .returning(p.ID)
       .fetchOne().getId
@@ -149,9 +142,8 @@ object Programmer {
       createdAt = createdAt)
   }
 
-  def save(m: Programmer)(implicit conn: Connection): Programmer = {
-    DSL.using(conn)
-      .update(p)
+  def save(m: Programmer)(implicit session: DBSession): Programmer = {
+    dsl.update(p)
       .set(p.NAME, m.name)
       .set(p.COMPANY_ID, m.companyId.boxed.orNull)
       .where(p.ID === m.id and isNotDeleted)
@@ -159,9 +151,8 @@ object Programmer {
     m
   }
 
-  def destroy(id: Long)(implicit conn: Connection): Unit = {
-    DSL.using(conn)
-      .update(p)
+  def destroy(id: Long)(implicit session: DBSession): Unit = {
+    dsl.update(p)
       .set(p.DELETED_AT, DateTime.now)
       .where(p.ID === id and isNotDeleted)
       .execute()

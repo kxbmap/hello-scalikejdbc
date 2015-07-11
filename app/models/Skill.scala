@@ -1,10 +1,9 @@
 package models
 
+import com.github.kxbmap.jooq.db.DBSession
 import com.github.kxbmap.jooq.syntax._
 import db.Tables
-import java.sql.Connection
 import org.joda.time.DateTime
-import org.jooq.impl.DSL
 import org.jooq.{Condition, Record, RecordMapper}
 import scala.collection.JavaConverters._
 
@@ -14,9 +13,9 @@ case class Skill(
     createdAt: DateTime,
     deletedAt: Option[DateTime] = None) {
 
-  def save()(implicit conn: Connection): Skill = Skill.save(this)
+  def save()(implicit session: DBSession): Skill = Skill.save(this)
 
-  def destroy()(implicit conn: Connection): Unit = Skill.destroy(id)
+  def destroy()(implicit session: DBSession): Unit = Skill.destroy(id)
 }
 
 object Skill {
@@ -38,39 +37,36 @@ object Skill {
   val s = Tables.SKILL.as("s")
   private val isNotDeleted = s.DELETED_AT.isNull
 
-  def find(id: Long)(implicit conn: Connection): Option[Skill] = {
-    Option(DSL.using(conn).selectFrom(s).where(s.ID === id and isNotDeleted).fetchOne(Skill(s)))
+  def find(id: Long)(implicit session: DBSession): Option[Skill] = {
+    Option(dsl.selectFrom(s).where(s.ID === id and isNotDeleted).fetchOne(Skill(s)))
   }
 
-  def findAll()(implicit conn: Connection): List[Skill] = {
-    DSL.using(conn)
-      .selectFrom(s)
+  def findAll()(implicit session: DBSession): List[Skill] = {
+    dsl.selectFrom(s)
       .where(isNotDeleted)
       .orderBy(s.ID)
       .fetch(Skill(s)).asScala.toList
   }
 
-  def countAll()(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(s).where(isNotDeleted).fetchOne().value1()
+  def countAll()(implicit session: DBSession): Int = {
+    dsl.selectCount().from(s).where(isNotDeleted).fetchOne().value1()
   }
 
-  def findAllBy(where: Condition)(implicit conn: Connection): List[Skill] = {
-    DSL.using(conn)
-      .selectFrom(s)
+  def findAllBy(where: Condition)(implicit session: DBSession): List[Skill] = {
+    dsl.selectFrom(s)
       .where(where and isNotDeleted)
       .orderBy(s.ID)
       .fetch(Skill(s)).asScala.toList
   }
 
-  def countBy(where: Condition)(implicit conn: Connection): Int = {
-    DSL.using(conn).selectCount().from(s).where(where and isNotDeleted).fetchOne().value1()
+  def countBy(where: Condition)(implicit session: DBSession): Int = {
+    dsl.selectCount().from(s).where(where and isNotDeleted).fetchOne().value1()
   }
 
-  def create(name: String, createdAt: DateTime = DateTime.now)(implicit conn: Connection): Skill = {
+  def create(name: String, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Skill = {
     val s = Tables.SKILL
 
-    val id = DSL.using(conn)
-      .insertInto(s, s.NAME, s.CREATED_AT)
+    val id = dsl.insertInto(s, s.NAME, s.CREATED_AT)
       .values(name, createdAt)
       .returning(s.ID)
       .fetchOne().getId
@@ -78,18 +74,16 @@ object Skill {
     Skill(id = id, name = name, createdAt = createdAt)
   }
 
-  def save(m: Skill)(implicit conn: Connection): Skill = {
-    DSL.using(conn)
-      .update(s)
+  def save(m: Skill)(implicit session: DBSession): Skill = {
+    dsl.update(s)
       .set(s.NAME, m.name)
       .where(s.ID === m.id and isNotDeleted)
       .execute()
     m
   }
 
-  def destroy(id: Long)(implicit conn: Connection): Unit = {
-    DSL.using(conn)
-      .update(s)
+  def destroy(id: Long)(implicit session: DBSession): Unit = {
+    dsl.update(s)
       .set(s.DELETED_AT, DateTime.now)
       .where(s.ID === id and isNotDeleted)
       .execute()

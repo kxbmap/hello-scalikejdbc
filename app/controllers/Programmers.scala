@@ -1,5 +1,6 @@
 package controllers
 
+import com.github.kxbmap.jooq.db.Database
 import com.github.tototoshi.play2.json4s.native._
 import javax.inject.Inject
 import models._
@@ -8,7 +9,6 @@ import org.json4s.ext.JodaTimeSerializers
 import play.api.data.Forms._
 import play.api.data._
 import play.api.data.validation.Constraints._
-import play.api.db.Database
 import play.api.mvc._
 
 class Programmers @Inject()(db: Database) extends Controller with Json4s {
@@ -16,13 +16,13 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   implicit val formats = DefaultFormats ++ JodaTimeSerializers.all
 
   def all = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Ok(Extraction.decompose(Programmer.findAll))
     }
   }
 
   def show(id: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Programmer.find(id).map(programmer => Ok(Extraction.decompose(programmer))) getOrElse NotFound
     }
   }
@@ -39,16 +39,17 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   def create = Action { implicit req =>
     programmerForm.bindFromRequest.fold(
       formWithErrors => BadRequest("invalid parameters"),
-      form => db.withTransaction { implicit conn =>
-        val programmer = Programmer.create(name = form.name, companyId = form.companyId)
-        Created.withHeaders(LOCATION -> s"/programmers/${programmer.id}")
-        NoContent
-      }
+      form =>
+        db.withTransaction { implicit session =>
+          val programmer = Programmer.create(name = form.name, companyId = form.companyId)
+          Created.withHeaders(LOCATION -> s"/programmers/${programmer.id}")
+          NoContent
+        }
     )
   }
 
   def addSkill(programmerId: Long, skillId: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Programmer.find(programmerId).map { programmer =>
         try {
           Skill.find(skillId).foreach(programmer.addSkill)
@@ -61,7 +62,7 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   }
 
   def deleteSkill(programmerId: Long, skillId: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Programmer.find(programmerId).map { programmer =>
         Skill.find(skillId).foreach(programmer.deleteSkill)
         Ok
@@ -70,7 +71,7 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   }
 
   def joinCompany(programmerId: Long, companyId: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Company.find(companyId).map { company =>
         Programmer.find(programmerId).map { programmer =>
           programmer.copy(companyId = Some(company.id)).save()
@@ -81,7 +82,7 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   }
 
   def leaveCompany(programmerId: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Programmer.find(programmerId).map { programmer =>
         programmer.copy(companyId = None).save()
         Ok
@@ -90,7 +91,7 @@ class Programmers @Inject()(db: Database) extends Controller with Json4s {
   }
 
   def delete(id: Long) = Action {
-    db.withTransaction { implicit conn =>
+    db.withTransaction { implicit session =>
       Programmer.find(id).map { programmer =>
         programmer.destroy()
         NoContent

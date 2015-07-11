@@ -1,39 +1,36 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
-import org.jooq.impl.DSL
 import org.specs2.mutable._
 import utils.AutoRollback
 
 class ProgrammerSpec extends Specification {
 
   trait AutoRollbackWithFixture extends AutoRollback {
-    locally {
-      val ctx = DSL.using(connection)
-      ctx.deleteFrom(Tables.PROGRAMMER_SKILL).execute()
-      ctx.deleteFrom(Tables.PROGRAMMER).execute()
-      ctx.deleteFrom(Tables.SKILL).execute()
-      ctx.deleteFrom(Tables.COMPANY).execute()
+    dsl.deleteFrom(Tables.PROGRAMMER_SKILL).execute()
+    dsl.deleteFrom(Tables.PROGRAMMER).execute()
+    dsl.deleteFrom(Tables.SKILL).execute()
+    dsl.deleteFrom(Tables.COMPANY).execute()
 
-      val scala = Skill.create("Scala")
-      val java = Skill.create("Java")
-      val ruby = Skill.create("Ruby")
+    val scala = Skill.create("Scala")
+    val java = Skill.create("Java")
+    val ruby = Skill.create("Ruby")
 
-      val programmer = Programmer.create("seratch")
-      programmer.addSkill(scala)
-      programmer.addSkill(java)
-      programmer.addSkill(ruby)
+    val programmer = Programmer.create("seratch")
+    programmer.addSkill(scala)
+    programmer.addSkill(java)
+    programmer.addSkill(ruby)
 
-      val company = Company.create("M3")
-      programmer.copy(companyId = Some(company.id)).save()
+    val company = Company.create("M3")
+    programmer.copy(companyId = Some(company.id)).save()
 
-      Programmer.create("no_skill_programmer")
+    Programmer.create("no_skill_programmer")
 
-      val anon = Programmer.create("anonymous")
-      anon.addSkill(java)
+    val anon = Programmer.create("anonymous")
+    anon.addSkill(java)
 
-      Programmer.create("should_be_deteled").destroy()
-    }
+    Programmer.create("should_be_deteled").destroy()
   }
 
   "Programmer" should {

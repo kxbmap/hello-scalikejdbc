@@ -1,8 +1,7 @@
 package utils
 
+import com.github.kxbmap.jooq.db.Database
 import com.typesafe.config.ConfigFactory
-import play.api.db.{Database, Databases}
-import scala.collection.JavaConversions._
 import scala.collection.concurrent.TrieMap
 
 object DB {
@@ -17,11 +16,11 @@ object DB {
 
   def get(name: String): Database = databases.getOrElseUpdate(name, {
     val config = ConfigFactory.load().getConfig(s"db.$name")
-    Databases(
-      driver = config.getString("driver"),
+    Class.forName(config.getString("driver"))
+    Database(
       url = config.getString("url"),
-      name = name,
-      config = config.root().unwrapped().toMap
+      user = config.getString("username"),
+      password = config.getString("password")
     )
   })
 

@@ -1,20 +1,18 @@
 package models
 
+import com.github.kxbmap.jooq.syntax._
 import db.Tables
-import org.jooq.impl.DSL
 import org.specs2.mutable._
 import utils.AutoRollback
 
 class CompanySpec extends Specification {
 
   trait AutoRollbackWithFixture extends AutoRollback {
-    locally {
-      val ctx = DSL.using(connection)
-      ctx.deleteFrom(Tables.COMPANY).execute()
-      Company.create("Typesafe", Some("http://typesafe.com"))
-      Company.create("Oracle")
-      Company.create("Amazon")
-    }
+    dsl.deleteFrom(Tables.COMPANY).execute()
+
+    Company.create("Typesafe", Some("http://typesafe.com"))
+    Company.create("Oracle")
+    Company.create("Amazon")
   }
 
   "Company" should {

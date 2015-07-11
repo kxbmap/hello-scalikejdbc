@@ -6,11 +6,13 @@ trait AutoRollback extends After {
 
   def name = "default"
 
-  implicit val connection = DB.get(name).getConnection(autocommit = false)
+  implicit val session = DB.get(name).getSession(autoCommit = false)
 
-  def after: Any =
+  def after: Any = {
+    val conn = session.configuration.connectionProvider().acquire()
     try
-      connection.rollback()
+      conn.rollback()
     finally
-      connection.close()
+      conn.close()
+  }
 }
