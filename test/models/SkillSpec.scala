@@ -32,11 +32,11 @@ class SkillSpec extends Specification {
       count should_== 5L
     }
     "find by where clauses" in new AutoRollbackWithFixture {
-      val results = Skill.findAllBy(Skill.s.NAME.in("Python", "Perl"))
+      val results = Skill.findAllBy(_.NAME.in("Python", "Perl"))
       results.size should_== 2
     }
     "count by where clauses" in new AutoRollbackWithFixture {
-      val count = Skill.countBy(Skill.s.NAME.like("P%"))
+      val count = Skill.countBy(_.NAME.like("P%"))
       count should_== 2L
     }
     "create new record" in new AutoRollbackWithFixture {

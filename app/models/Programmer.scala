@@ -2,7 +2,7 @@ package models
 
 import com.github.kxbmap.jooq.db.DBSession
 import com.github.kxbmap.jooq.syntax._
-import db.Tables
+import db.{Tables, tables}
 import org.joda.time.DateTime
 import org.jooq._
 import org.jooq.impl.DSL
@@ -39,7 +39,7 @@ case class Programmer(
 
 object Programmer {
 
-  def apply(p: db.tables.Programmer): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
+  def apply(p: tables.Programmer): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
     def map(record: Record): Programmer = Programmer(
       id = record.get(p.ID),
       name = record.get(p.NAME),
@@ -49,7 +49,7 @@ object Programmer {
     )
   }
 
-  def apply(p: db.tables.Programmer, c: db.tables.Company): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
+  def apply(p: tables.Programmer, c: tables.Company): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
     val prm = Programmer(p)
     val crm = Company.opt(c)
     def map(record: Record): Programmer = prm.map(record).copy(company = crm.map(record))
@@ -102,7 +102,7 @@ object Programmer {
     dsl.selectCount().from(p).where(isNotDeleted).fetchOne().value1()
   }
 
-  def findAllBy(where: Condition, withCompany: Boolean = true)(implicit session: DBSession): List[Programmer] = {
+  def findAllBy(where: tables.Programmer => Condition, withCompany: Boolean = true)(implicit session: DBSession): List[Programmer] = {
     val prm = if (withCompany) Programmer(p, c) else Programmer(p)
     val srm = Skill.opt(s)
     dsl.select(p.fields())
@@ -112,15 +112,15 @@ object Programmer {
       .mapIf(withCompany, _.leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull))
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
       .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
-      .where(where and isNotDeleted)
+      .where(where(p) and isNotDeleted)
       .fetchGroups(p.ID).asScala
       .map {
         case (_, rs) => rs.get(0).map(prm).copy(skills = rs.map(srm).asScala.flatten)
       }(collection.breakOut)
   }
 
-  def countBy(where: Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(p).where(where and isNotDeleted).fetchOne().value1()
+  def countBy(where: tables.Programmer => Condition)(implicit session: DBSession): Int = {
+    dsl.selectCount().from(p).where(where(p) and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Programmer = {

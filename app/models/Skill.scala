@@ -2,7 +2,7 @@ package models
 
 import com.github.kxbmap.jooq.db.DBSession
 import com.github.kxbmap.jooq.syntax._
-import db.Tables
+import db.{Tables, tables}
 import org.joda.time.DateTime
 import org.jooq.{Condition, Record, RecordMapper}
 import scala.collection.JavaConverters._
@@ -20,7 +20,7 @@ case class Skill(
 
 object Skill {
 
-  def apply(s: db.tables.Skill): RecordMapper[Record, Skill] = new RecordMapper[Record, Skill] {
+  def apply(s: tables.Skill): RecordMapper[Record, Skill] = new RecordMapper[Record, Skill] {
     def map(record: Record): Skill = Skill(
       id = record.get(s.ID),
       name = record.get(s.NAME),
@@ -29,7 +29,7 @@ object Skill {
     )
   }
 
-  def opt(s: db.tables.Skill): RecordMapper[Record, Option[Skill]] = new RecordMapper[Record, Option[Skill]] {
+  def opt(s: tables.Skill): RecordMapper[Record, Option[Skill]] = new RecordMapper[Record, Option[Skill]] {
     val srm = Skill(s)
     def map(record: Record): Option[Skill] = record.getOpt(s.ID).map(_ => srm.map(record))
   }
@@ -52,15 +52,15 @@ object Skill {
     dsl.selectCount().from(s).where(isNotDeleted).fetchOne().value1()
   }
 
-  def findAllBy(where: Condition)(implicit session: DBSession): List[Skill] = {
+  def findAllBy(where: tables.Skill => Condition)(implicit session: DBSession): List[Skill] = {
     dsl.selectFrom(s)
-      .where(where and isNotDeleted)
+      .where(where(s) and isNotDeleted)
       .orderBy(s.ID)
       .fetch(Skill(s)).asScala.toList
   }
 
-  def countBy(where: Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(s).where(where and isNotDeleted).fetchOne().value1()
+  def countBy(where: tables.Skill => Condition)(implicit session: DBSession): Int = {
+    dsl.selectCount().from(s).where(where(s) and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Skill = {

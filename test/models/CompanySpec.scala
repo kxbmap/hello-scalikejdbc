@@ -30,11 +30,11 @@ class CompanySpec extends Specification {
       count should_== 3L
     }
     "find by where clauses" in new AutoRollbackWithFixture {
-      val results = Company.findAllBy(Company.c.URL.isNull)
+      val results = Company.findAllBy(_.URL.isNull)
       results.size should_== 2
     }
     "count by where clauses" in new AutoRollbackWithFixture {
-      val count = Company.countBy(Company.c.URL.isNotNull)
+      val count = Company.countBy(_.URL.isNotNull)
       count should_== 1L
     }
     "create new record" in new AutoRollbackWithFixture {

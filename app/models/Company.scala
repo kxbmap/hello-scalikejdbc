@@ -2,7 +2,7 @@ package models
 
 import com.github.kxbmap.jooq.db.DBSession
 import com.github.kxbmap.jooq.syntax._
-import db.Tables
+import db.{Tables, tables}
 import org.joda.time.DateTime
 import org.jooq.{Condition, Record, RecordMapper}
 import scala.collection.JavaConverters._
@@ -21,7 +21,7 @@ case class Company(
 
 object Company {
 
-  def apply(c: db.tables.Company): RecordMapper[Record, Company] = new RecordMapper[Record, Company] {
+  def apply(c: tables.Company): RecordMapper[Record, Company] = new RecordMapper[Record, Company] {
     def map(record: Record): Company = Company(
       id = record.get(c.ID),
       name = record.get(c.NAME),
@@ -31,7 +31,7 @@ object Company {
     )
   }
 
-  def opt(c: db.tables.Company): RecordMapper[Record, Option[Company]] = new RecordMapper[Record, Option[Company]] {
+  def opt(c: tables.Company): RecordMapper[Record, Option[Company]] = new RecordMapper[Record, Option[Company]] {
     val crm = Company(c)
     def map(record: Record): Option[Company] = record.getOpt(c.ID).map(_ => crm.map(record))
   }
@@ -54,15 +54,15 @@ object Company {
     dsl.selectCount().from(c).where(isNotDeleted).fetchOne().value1()
   }
 
-  def findAllBy(where: Condition)(implicit session: DBSession): List[Company] = {
+  def findAllBy(where: tables.Company => Condition)(implicit session: DBSession): List[Company] = {
     dsl.selectFrom(c)
-      .where(where and isNotDeleted)
+      .where(where(c) and isNotDeleted)
       .orderBy(c.ID)
       .fetch(Company(c)).asScala.toList
   }
 
-  def countBy(where: Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(c).where(where and isNotDeleted).fetchOne().value1()
+  def countBy(where: tables.Company => Condition)(implicit session: DBSession): Int = {
+    dsl.selectCount().from(c).where(where(c) and isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, url: Option[String] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Company = {
