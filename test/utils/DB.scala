@@ -1,6 +1,6 @@
 package utils
 
-import com.github.kxbmap.jooq.db.Database
+import com.github.kxbmap.jooqs.db.Database
 import com.typesafe.config.ConfigFactory
 import scala.collection.concurrent.TrieMap
 

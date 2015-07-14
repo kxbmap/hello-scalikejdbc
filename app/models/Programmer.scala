@@ -1,7 +1,7 @@
 package models
 
-import com.github.kxbmap.jooq.db.DBSession
-import com.github.kxbmap.jooq.syntax._
+import com.github.kxbmap.jooqs.db.DBSession
+import com.github.kxbmap.jooqs.syntax._
 import db.{Tables, tables}
 import org.joda.time.DateTime
 import org.jooq._

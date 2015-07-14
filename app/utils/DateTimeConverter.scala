@@ -1,6 +1,6 @@
 package utils
 
-import com.github.kxbmap.jooq.SimpleConverter
+import com.github.kxbmap.jooqs.SimpleConverter
 import java.sql.Timestamp
 import org.joda.time.DateTime
 

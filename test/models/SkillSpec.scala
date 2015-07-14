@@ -1,6 +1,6 @@
 package models
 
-import com.github.kxbmap.jooq.syntax._
+import com.github.kxbmap.jooqs.syntax._
 import db.Tables
 import org.specs2.mutable._
 import utils.AutoRollback

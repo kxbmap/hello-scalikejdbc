@@ -1,6 +1,6 @@
 package controllers
 
-import com.github.kxbmap.jooq.db.Database
+import com.github.kxbmap.jooqs.db.Database
 import com.github.tototoshi.play2.json4s.native._
 import javax.inject.Inject
 import models._

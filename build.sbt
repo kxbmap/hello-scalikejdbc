@@ -9,12 +9,14 @@ lazy val root = (project in file("."))
     version := "0.1",
     scalaVersion := "2.11.7",
     resolvers ++= Seq(
-      "sonatype releases" at "http://oss.sonatype.org/content/repositories/releases",
+      Opts.resolver.sonatypeReleases,
+      Opts.resolver.sonatypeSnapshots,
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
     ),
     libraryDependencies ++= Seq(
       jdbc,
       "org.jooq"             %  "jooq"               % jooqVersion.value,
+      "com.github.kxbmap"    %% "jooqs-play"         % "0.1.0-SNAPSHOT",
       "com.h2database"       %  "h2"                 % h2Version,
       "org.json4s"           %% "json4s-ext"         % "3.2.11",
       "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
@@ -27,22 +29,21 @@ lazy val root = (project in file("."))
       import models._
       import org.jooq._
       import org.jooq.impl.DSL
+      import com.github.kxbmap.jooqs.syntax._
       Class.forName("org.h2.Driver")
-      implicit val __connection = java.sql.DriverManager.getConnection("jdbc:h2:./db/playapp", "sa", "")
+      val db = com.github.kxbmap.jooqs.db.Database("jdbc:h2:./db/playapp", "sa", "")
       val (p, c, s, ps) = (Programmer.p, Company.c, Skill.s, ProgrammerSkill.ps)
-      val ctx = DSL.using(__connection)
+      implicit val session = db.getSession()
     """,
     cleanupCommands := """
-      __connection.close()
+      session.close()
+      db.shutdown()
     """,
     jooqCodegen in Compile <<= (jooqCodegen in Compile).dependsOn(flywayMigrate in migration),
     jooqCodegenConfigFile in Compile := Some(file("project") / "jooq-codegen.xml"),
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
   .dependsOn(migration)
-  .dependsOn(scalaJooqPlay)
-
-lazy val scalaJooqPlay = ProjectRef(file("..") / "scala-jooq", "play")
 
 lazy val migration = project.settings(
   name := "hello-scalikejdbc-migration",
