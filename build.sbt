@@ -15,7 +15,6 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       jdbc,
-      "org.jooq"             %  "jooq"               % jooqVersion.value,
       "com.github.kxbmap"    %% "jooqs-play"         % "0.1.0-SNAPSHOT",
       "com.h2database"       %  "h2"                 % h2Version,
       "org.json4s"           %% "json4s-ext"         % "3.2.11",
@@ -38,8 +37,8 @@ lazy val root = (project in file("."))
       session.close()
       db.shutdown()
     """,
-    jooqCodegen in Compile <<= (jooqCodegen in Compile).dependsOn(flywayMigrate in migration),
-    jooqCodegenConfigFile in Compile := Some(file("project") / "jooq-codegen.xml"),
+    jooqCodegen <<= jooqCodegen.dependsOn(flywayMigrate in migration),
+    jooqCodegenConfigFile := Some(file("project") / "jooq-codegen.xml"),
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
 
