@@ -20,7 +20,6 @@ lazy val root = (project in file("."))
       "com.h2database"       %  "h2"                 % h2Version,
       "org.json4s"           %% "json4s-ext"         % "3.2.11",
       "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
-      "org.flywaydb"         %% "flyway-play"        % "2.0.1",
       specs2 % "test"
     ),
     checksums := Nil, // play-json4s-native_2.11-0.4.0.pom: invalid sha1
@@ -43,7 +42,6 @@ lazy val root = (project in file("."))
     jooqCodegenConfigFile in Compile := Some(file("project") / "jooq-codegen.xml"),
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
-  .dependsOn(migration)
 
 lazy val migration = project.settings(
   name := "hello-scalikejdbc-migration",
