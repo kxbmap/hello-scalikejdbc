@@ -38,7 +38,7 @@ lazy val root = (project in file("."))
       db.shutdown()
     """,
     jooqCodegen <<= jooqCodegen.dependsOn(flywayMigrate in migration),
-    jooqCodegenConfigFile := Some(file("project") / "jooq-codegen.xml"),
+    jooqCodegenConfigFile := Some(file("db") / "jooq-codegen.xml"),
     libraryDependencies += "com.h2database" % "h2" % h2Version % "jooq"
   )
 
