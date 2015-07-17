@@ -31,7 +31,7 @@ case class Programmer(
 
   def deleteSkill(skill: Skill)(implicit session: DBSession): Unit = {
     dsl.deleteFrom(ps)
-      .where(ps.PROGRAMMER_ID === id and ps.SKILL_ID === skill.id)
+      .where(ps.PROGRAMMER_ID === id && ps.SKILL_ID === skill.id)
       .execute()
   }
 
@@ -66,10 +66,10 @@ object Programmer {
   def find(id: Long)(implicit session: DBSession): Option[Programmer] = {
     dsl.select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
-      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
+      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID && c.DELETED_AT.isNull)
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
-      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
-      .where(p.ID === id and isNotDeleted)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
+      .where(p.ID === id && isNotDeleted)
       .fetchGroups(p.ID).asScala
       .get(id)
       .map(rs => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten))
@@ -79,9 +79,9 @@ object Programmer {
   def findAll()(implicit session: DBSession): List[Programmer] = {
     dsl.select(p.fields()).select(c.fields()).select(s.fields())
       .from(p)
-      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull)
+      .leftOuterJoin(c).on(p.COMPANY_ID === c.ID && c.DELETED_AT.isNull)
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
-      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
       .where(isNotDeleted)
       .fetchGroups(p.ID).asScala
       .map {
@@ -93,7 +93,7 @@ object Programmer {
     dsl.select(p.fields()).select(c.fields())
       .from(p)
       .leftOuterJoin(c).on(p.COMPANY_ID === c.ID)
-      .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)) and isNotDeleted)
+      .where(p.ID.notIn(DSL.selectDistinct(ps.PROGRAMMER_ID).from(ps)) && isNotDeleted)
       .orderBy(p.ID)
       .fetch(Programmer(p, c)).asScala.toList
   }
@@ -109,10 +109,10 @@ object Programmer {
       .mapIf(withCompany, _.select(c.fields()))
       .select(s.fields())
       .from(p)
-      .mapIf(withCompany, _.leftOuterJoin(c).on(p.COMPANY_ID === c.ID and c.DELETED_AT.isNull))
+      .mapIf(withCompany, _.leftOuterJoin(c).on(p.COMPANY_ID === c.ID && c.DELETED_AT.isNull))
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
-      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID and s.DELETED_AT.isNull)
-      .where(where(p) and isNotDeleted)
+      .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
+      .where(where(p) && isNotDeleted)
       .fetchGroups(p.ID).asScala
       .map {
         case (_, rs) => rs.get(0).map(prm).copy(skills = rs.map(srm).asScala.flatten)
@@ -120,7 +120,7 @@ object Programmer {
   }
 
   def countBy(where: tables.Programmer => Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(p).where(where(p) and isNotDeleted).fetchOne().value1()
+    dsl.selectCount().from(p).where(where(p) && isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, companyId: Option[Long] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Programmer = {
@@ -130,7 +130,7 @@ object Programmer {
     val p = Tables.PROGRAMMER
 
     val id = dsl.insertInto(p, p.NAME, p.COMPANY_ID, p.CREATED_AT)
-      .values(name, companyId.boxed.orNull, createdAt)
+      .values(name, companyId.box.orNull, createdAt)
       .returning(p.ID)
       .fetchOne().getId
 
@@ -145,8 +145,8 @@ object Programmer {
   def save(m: Programmer)(implicit session: DBSession): Programmer = {
     dsl.update(p)
       .set(p.NAME, m.name)
-      .set(p.COMPANY_ID, m.companyId.boxed.orNull)
-      .where(p.ID === m.id and isNotDeleted)
+      .set(p.COMPANY_ID, m.companyId.box.orNull)
+      .where(p.ID === m.id && isNotDeleted)
       .execute()
     m
   }
@@ -154,7 +154,7 @@ object Programmer {
   def destroy(id: Long)(implicit session: DBSession): Unit = {
     dsl.update(p)
       .set(p.DELETED_AT, DateTime.now)
-      .where(p.ID === id and isNotDeleted)
+      .where(p.ID === id && isNotDeleted)
       .execute()
   }
 

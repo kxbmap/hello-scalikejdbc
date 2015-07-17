@@ -38,7 +38,7 @@ object Skill {
   private val isNotDeleted = s.DELETED_AT.isNull
 
   def find(id: Long)(implicit session: DBSession): Option[Skill] = {
-    Option(dsl.selectFrom(s).where(s.ID === id and isNotDeleted).fetchOne(Skill(s)))
+    Option(dsl.selectFrom(s).where(s.ID === id && isNotDeleted).fetchOne(Skill(s)))
   }
 
   def findAll()(implicit session: DBSession): List[Skill] = {
@@ -54,13 +54,13 @@ object Skill {
 
   def findAllBy(where: tables.Skill => Condition)(implicit session: DBSession): List[Skill] = {
     dsl.selectFrom(s)
-      .where(where(s) and isNotDeleted)
+      .where(where(s) && isNotDeleted)
       .orderBy(s.ID)
       .fetch(Skill(s)).asScala.toList
   }
 
   def countBy(where: tables.Skill => Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(s).where(where(s) and isNotDeleted).fetchOne().value1()
+    dsl.selectCount().from(s).where(where(s) && isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Skill = {
@@ -77,7 +77,7 @@ object Skill {
   def save(m: Skill)(implicit session: DBSession): Skill = {
     dsl.update(s)
       .set(s.NAME, m.name)
-      .where(s.ID === m.id and isNotDeleted)
+      .where(s.ID === m.id && isNotDeleted)
       .execute()
     m
   }
@@ -85,7 +85,7 @@ object Skill {
   def destroy(id: Long)(implicit session: DBSession): Unit = {
     dsl.update(s)
       .set(s.DELETED_AT, DateTime.now)
-      .where(s.ID === id and isNotDeleted)
+      .where(s.ID === id && isNotDeleted)
       .execute()
   }
 

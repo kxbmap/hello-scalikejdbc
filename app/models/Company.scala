@@ -40,7 +40,7 @@ object Company {
   private val isNotDeleted = c.DELETED_AT.isNull
 
   def find(id: Long)(implicit session: DBSession): Option[Company] = {
-    Option(dsl.selectFrom(c).where(c.ID === id and isNotDeleted).fetchOne(Company(c)))
+    Option(dsl.selectFrom(c).where(c.ID === id && isNotDeleted).fetchOne(Company(c)))
   }
 
   def findAll()(implicit session: DBSession): List[Company] = {
@@ -56,13 +56,13 @@ object Company {
 
   def findAllBy(where: tables.Company => Condition)(implicit session: DBSession): List[Company] = {
     dsl.selectFrom(c)
-      .where(where(c) and isNotDeleted)
+      .where(where(c) && isNotDeleted)
       .orderBy(c.ID)
       .fetch(Company(c)).asScala.toList
   }
 
   def countBy(where: tables.Company => Condition)(implicit session: DBSession): Int = {
-    dsl.selectCount().from(c).where(where(c) and isNotDeleted).fetchOne().value1()
+    dsl.selectCount().from(c).where(where(c) && isNotDeleted).fetchOne().value1()
   }
 
   def create(name: String, url: Option[String] = None, createdAt: DateTime = DateTime.now)(implicit session: DBSession): Company = {
@@ -80,7 +80,7 @@ object Company {
     dsl.update(c)
       .set(c.NAME, m.name)
       .set(c.URL, m.url.orNull)
-      .where(c.ID === m.id and isNotDeleted)
+      .where(c.ID === m.id && isNotDeleted)
       .execute()
     m
   }
@@ -88,7 +88,7 @@ object Company {
   def destroy(id: Long)(implicit session: DBSession): Unit = {
     dsl.update(c)
       .set(c.DELETED_AT, DateTime.now)
-      .where(c.ID === id and isNotDeleted)
+      .where(c.ID === id && isNotDeleted)
       .execute()
   }
 
