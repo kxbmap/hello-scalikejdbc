@@ -15,13 +15,13 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       jdbc,
-      "com.github.kxbmap"    %% "jooqs-play24"       % "0.1.0-SNAPSHOT",
-      "com.h2database"       %  "h2"                 % h2Version,
-      "org.json4s"           %% "json4s-ext"         % "3.3.0",
-      "com.github.tototoshi" %% "play-json4s-native" % "0.4.2",
+      "com.github.kxbmap"      %% "jooqs-play24"       % "0.1.0-SNAPSHOT",
+      "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0",
+      "com.h2database"         %  "h2"                 % h2Version,
+      "org.json4s"             %% "json4s-ext"         % "3.3.0",
+      "com.github.tototoshi"   %% "play-json4s-native" % "0.4.2",
       specs2 % "test"
     ),
-    checksums := Nil, // play-json4s-native_2.11-0.4.0.pom: invalid sha1
     routesGenerator := InjectedRoutesGenerator,
     initialCommands := """
       import models._

@@ -6,6 +6,7 @@ import jooqs.syntax._
 import org.joda.time.DateTime
 import org.jooq.{Condition, Record, RecordMapper}
 import scala.collection.JavaConverters._
+import scala.compat.java8.OptionConverters._
 
 case class Company(
     id: Long,
@@ -40,7 +41,7 @@ object Company {
   private val isNotDeleted = c.DELETED_AT.isNull
 
   def find(id: Long)(implicit session: DBSession): Option[Company] = {
-    Option(dsl.selectFrom(c).where(c.ID === id && isNotDeleted).fetchOne(Company(c)))
+    dsl.selectFrom(c).where(c.ID === id && isNotDeleted).fetchOptional(Company(c)).asScala
   }
 
   def findAll()(implicit session: DBSession): List[Company] = {
