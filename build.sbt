@@ -8,6 +8,9 @@ lazy val root = (project in file("."))
     name := "hello-scalikejdbc",
     version := "0.1",
     scalaVersion := "2.11.7",
+    scalacOptions ++= Seq(
+      "-Xexperimental"
+    ),
     resolvers ++= Seq(
       Opts.resolver.sonatypeReleases,
       Opts.resolver.sonatypeSnapshots,

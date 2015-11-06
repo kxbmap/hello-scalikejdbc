@@ -22,20 +22,17 @@ case class Company(
 
 object Company {
 
-  def apply(c: tables.Company): RecordMapper[Record, Company] = new RecordMapper[Record, Company] {
-    def map(record: Record): Company = Company(
+  def apply(c: tables.Company): RecordMapper[Record, Company] =
+    record => Company(
       id = record.get(c.ID),
       name = record.get(c.NAME),
       url = record.getOpt(c.URL),
       createdAt = record.get(c.CREATED_AT),
       deletedAt = record.getOpt(c.DELETED_AT)
     )
-  }
 
-  def opt(c: tables.Company): RecordMapper[Record, Option[Company]] = new RecordMapper[Record, Option[Company]] {
-    val crm = Company(c)
-    def map(record: Record): Option[Company] = record.getOpt(c.ID).map(_ => crm.map(record))
-  }
+  def opt(c: tables.Company): RecordMapper[Record, Option[Company]] =
+    record => record.getOpt(c.ID).map(_ => record.map(Company(c)))
 
   val c = Tables.COMPANY.as("c")
   private val isNotDeleted = c.DELETED_AT.isNull

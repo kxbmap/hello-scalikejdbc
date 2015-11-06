@@ -21,19 +21,16 @@ case class Skill(
 
 object Skill {
 
-  def apply(s: tables.Skill): RecordMapper[Record, Skill] = new RecordMapper[Record, Skill] {
-    def map(record: Record): Skill = Skill(
+  def apply(s: tables.Skill): RecordMapper[Record, Skill] =
+    record => Skill(
       id = record.get(s.ID),
       name = record.get(s.NAME),
       createdAt = record.get(s.CREATED_AT),
       deletedAt = record.getOpt(s.DELETED_AT)
     )
-  }
 
-  def opt(s: tables.Skill): RecordMapper[Record, Option[Skill]] = new RecordMapper[Record, Option[Skill]] {
-    val srm = Skill(s)
-    def map(record: Record): Option[Skill] = record.getOpt(s.ID).map(_ => srm.map(record))
-  }
+  def opt(s: tables.Skill): RecordMapper[Record, Option[Skill]] =
+    record => record.getOpt(s.ID).map(_ => record.map(Skill(s)))
 
   val s = Tables.SKILL.as("s")
   private val isNotDeleted = s.DELETED_AT.isNull

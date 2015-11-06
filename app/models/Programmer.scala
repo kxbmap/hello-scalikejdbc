@@ -39,21 +39,17 @@ case class Programmer(
 
 object Programmer {
 
-  def apply(p: tables.Programmer): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
-    def map(record: Record): Programmer = Programmer(
+  def apply(p: tables.Programmer): RecordMapper[Record, Programmer] =
+    record => Programmer(
       id = record.get(p.ID),
       name = record.get(p.NAME),
       companyId = record.getOpt(p.COMPANY_ID),
       createdAt = record.get(p.CREATED_AT),
       deletedAt = record.getOpt(p.DELETED_AT)
     )
-  }
 
-  def apply(p: tables.Programmer, c: tables.Company): RecordMapper[Record, Programmer] = new RecordMapper[Record, Programmer] {
-    val prm = Programmer(p)
-    val crm = Company.opt(c)
-    def map(record: Record): Programmer = prm.map(record).copy(company = crm.map(record))
-  }
+  def apply(p: tables.Programmer, c: tables.Company): RecordMapper[Record, Programmer] =
+    record => record.map(Programmer(p)).copy(company = record.map(Company.opt(c)))
 
   val p = Tables.PROGRAMMER.as("p")
 
