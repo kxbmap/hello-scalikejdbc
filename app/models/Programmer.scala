@@ -70,9 +70,10 @@ object Programmer {
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
       .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
       .where(p.ID === id && isNotDeleted)
-      .fetchGroups(p.ID).asScala
-      .get(id)
-      .map(rs => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten))
+      .fetchGroups(Programmer(p, c), Skill.opt(s)).asScala
+      .collectFirst {
+        case (prg, skills) => prg.copy(skills = skills.asScala.flatten)
+      }
   }
 
   // programmer with company(optional) with skills(many)
@@ -83,9 +84,9 @@ object Programmer {
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
       .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
       .where(isNotDeleted)
-      .fetchGroups(p.ID).asScala
+      .fetchGroups(Programmer(p, c), Skill.opt(s)).asScala
       .map {
-        case (_, rs) => rs.get(0).map(Programmer(p, c)).copy(skills = rs.map(Skill.opt(s)).asScala.flatten)
+        case (prg, skills) => prg.copy(skills = skills.asScala.flatten)
       }(collection.breakOut)
   }
 
@@ -104,7 +105,6 @@ object Programmer {
 
   def findAllBy(where: tables.Programmer => Condition, withCompany: Boolean = true)(implicit session: DBSession): List[Programmer] = {
     val prm = if (withCompany) Programmer(p, c) else Programmer(p)
-    val srm = Skill.opt(s)
     dsl.select(p.fields())
       .mapIf(withCompany, _.select(c.fields()))
       .select(s.fields())
@@ -113,9 +113,9 @@ object Programmer {
       .leftOuterJoin(ps).on(ps.PROGRAMMER_ID === p.ID)
       .leftOuterJoin(s).on(ps.SKILL_ID === s.ID && s.DELETED_AT.isNull)
       .where(where(p) && isNotDeleted)
-      .fetchGroups(p.ID).asScala
+      .fetchGroups(prm, Skill.opt(s)).asScala
       .map {
-        case (_, rs) => rs.get(0).map(prm).copy(skills = rs.map(srm).asScala.flatten)
+        case (prg, skills) => prg.copy(skills = skills.asScala.flatten)
       }(collection.breakOut)
   }
 
