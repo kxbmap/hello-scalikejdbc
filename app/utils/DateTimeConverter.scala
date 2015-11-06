@@ -1,7 +1,7 @@
 package utils
 
-import com.github.kxbmap.jooqs.SimpleConverter
 import java.sql.Timestamp
+import jooqs.SimpleConverter
 import org.joda.time.DateTime
 
 @SerialVersionUID(1L)

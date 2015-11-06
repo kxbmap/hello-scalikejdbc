@@ -1,4 +1,4 @@
-lazy val h2Version = "1.4.187"
+lazy val h2Version = "1.4.190"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
@@ -15,10 +15,10 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       jdbc,
-      "com.github.kxbmap"    %% "jooqs-play"         % "0.1.0-SNAPSHOT",
+      "com.github.kxbmap"    %% "jooqs-play24"       % "0.1.0-SNAPSHOT",
       "com.h2database"       %  "h2"                 % h2Version,
-      "org.json4s"           %% "json4s-ext"         % "3.2.11",
-      "com.github.tototoshi" %% "play-json4s-native" % "0.4.0",
+      "org.json4s"           %% "json4s-ext"         % "3.3.0",
+      "com.github.tototoshi" %% "play-json4s-native" % "0.4.2",
       specs2 % "test"
     ),
     checksums := Nil, // play-json4s-native_2.11-0.4.0.pom: invalid sha1
@@ -27,9 +27,9 @@ lazy val root = (project in file("."))
       import models._
       import org.jooq._
       import org.jooq.impl.DSL
-      import com.github.kxbmap.jooqs.syntax._
+      import jooqs.syntax._
       Class.forName("org.h2.Driver")
-      val db = com.github.kxbmap.jooqs.db.Database("jdbc:h2:./db/playapp", "sa", "")
+      val db = jooqs.db.Database("jdbc:h2:./db/playapp", "sa", "")
       val (p, c, s, ps) = (Programmer.p, Company.c, Skill.s, ProgrammerSkill.ps)
       implicit val session = db.getSession()
     """,

@@ -1,8 +1,8 @@
 package controllers
 
-import com.github.kxbmap.jooqs.db.Database
 import com.github.tototoshi.play2.json4s.native._
 import javax.inject.Inject
+import jooqs.Database
 import models._
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers

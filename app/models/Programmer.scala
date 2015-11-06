@@ -1,8 +1,8 @@
 package models
 
-import com.github.kxbmap.jooqs.db.DBSession
-import com.github.kxbmap.jooqs.syntax._
 import db.{Tables, tables}
+import jooqs.DBSession
+import jooqs.syntax._
 import org.joda.time.DateTime
 import org.jooq._
 import org.jooq.impl.DSL
