@@ -49,7 +49,7 @@ object Programmer {
     )
 
   def apply(p: tables.Programmer, c: tables.Company): RecordMapper[Record, Programmer] =
-    record => record.map(Programmer(p)).copy(company = record.map(Company.opt(c)))
+    Programmer(p).zipWith(Company.opt(c))((p, c) => p.copy(company = c))
 
   val p = Tables.PROGRAMMER.as("p")
 
